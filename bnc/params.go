@@ -86,6 +86,8 @@ func structToSignedQuery(s any, key string) (query string) {
 	params := structToParams(s)
 	params.Set("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
 	query = params.Encode()
-	query += "&signature=" + SignByHmacSHA256ToHex(query, key)
+	if key != "" {
+		query += "&signature=" + SignByHmacSHA256ToHex(query, key)
+	}
 	return
 }

@@ -20,8 +20,8 @@ type Req[T any] struct {
 type Resp[T any] struct {
 	StatusCode int    `json:"-"`
 	Status     string `json:"-"`
-	Code       int64  `json:"code,omitempty"`
-	Msg        string `json:"msg,omitempty"`
+	Code       int64  `json:"code"`
+	Msg        string `json:"msg"`
 	Data       T      `json:"-"`
 }
 
