@@ -32,8 +32,7 @@ func Request[ReqParams, RespData any](reqInfo Req[ReqParams]) (resp Resp[RespDat
 		return
 	}
 	req.Header = reqInfo.Header
-	client := &http.Client{}
-	rawResp, err := client.Do(req)
+	rawResp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return
 	}

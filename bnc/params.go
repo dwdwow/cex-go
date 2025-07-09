@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+type EmptyStruct struct{}
+
 func structToParams(s any) (params url.Values) {
 	params = url.Values{}
 	typ := reflect.TypeOf(s)
@@ -93,9 +95,9 @@ func formatAtom(v reflect.Value, inSlice bool) string {
 
 func structToSignedQuery(s any, key string) (query string) {
 	params := structToParams(s)
-	params.Set("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
 	query = params.Encode()
 	if key != "" {
+		query += "&timestamp=" + strconv.FormatInt(time.Now().UnixMilli(), 10)
 		query += "&signature=" + SignByHmacSHA256ToHex(query, key)
 	}
 	return

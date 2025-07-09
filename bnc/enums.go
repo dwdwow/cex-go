@@ -135,12 +135,12 @@ const (
 	RAW_REQUESTS   RateLimitType = "RAW_REQUESTS"
 )
 
-type Interval string
+type RateLimiterInterval string
 
 const (
-	SECOND Interval = "SECOND"
-	MINUTE Interval = "MINUTE"
-	DAY    Interval = "DAY"
+	SECOND RateLimiterInterval = "SECOND"
+	MINUTE RateLimiterInterval = "MINUTE"
+	DAY    RateLimiterInterval = "DAY"
 )
 
 type STPMode string
