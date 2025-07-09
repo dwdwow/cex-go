@@ -47,14 +47,17 @@ func structToParams(s any) (params url.Values) {
 			params.Add(name, tag)
 			continue
 		}
-		params.Add(name, formatAtom(v))
+		params.Add(name, formatAtom(v, false))
 	}
 	return
 }
 
-func formatAtom(v reflect.Value) string {
+func formatAtom(v reflect.Value, inSlice bool) string {
 	switch v.Kind() {
 	case reflect.String:
+		if inSlice {
+			return `"` + v.String() + `"`
+		}
 		return v.String()
 	case reflect.Uint64:
 		return strconv.FormatUint(v.Uint(), 10)
@@ -62,6 +65,14 @@ func formatAtom(v reflect.Value) string {
 		return strconv.FormatFloat(v.Float(), 'f', -1, 64)
 	case reflect.Int64:
 		return strconv.FormatInt(v.Int(), 10)
+	case reflect.Bool:
+		return strconv.FormatBool(v.Bool())
+	case reflect.Slice, reflect.Array:
+		elems := make([]string, v.Len())
+		for i := range v.Len() {
+			elems[i] = formatAtom(v.Index(i), true)
+		}
+		return "[" + strings.Join(elems, ",") + "]"
 	case reflect.Int,
 		reflect.Int8,
 		reflect.Int16,
@@ -75,8 +86,6 @@ func formatAtom(v reflect.Value) string {
 		return strconv.FormatUint(v.Uint(), 10)
 	case reflect.Float32:
 		return strconv.FormatFloat(v.Float(), 'f', -1, 64)
-	case reflect.Bool:
-		return strconv.FormatBool(v.Bool())
 	default:
 		panic(fmt.Sprintf("bnc: field %v is %v", v.Type().String(), v.Kind()))
 	}
