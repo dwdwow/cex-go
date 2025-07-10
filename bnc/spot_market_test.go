@@ -5,6 +5,17 @@ import (
 	"testing"
 )
 
+func TestGetSpotRawOrderBook(t *testing.T) {
+	orderBook, err := GetSpotRawOrderBook(ParamsOrderBook{
+		Symbol: "BTCUSDT",
+		Limit:  5000,
+	})
+	if err != nil {
+		t.Errorf("GetSpotOrderBook() error = %v", err)
+	}
+	fmt.Println(len(orderBook.Bids))
+}
+
 func TestGetSpotOrderBook(t *testing.T) {
 	orderBook, err := GetSpotOrderBook(ParamsOrderBook{
 		Symbol: "BTCUSDT",
@@ -13,7 +24,7 @@ func TestGetSpotOrderBook(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetSpotOrderBook() error = %v", err)
 	}
-	fmt.Println(len(orderBook.Bids))
+	fmt.Println(orderBook.Bids[0])
 }
 
 func TestGetSpotTrades(t *testing.T) {

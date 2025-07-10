@@ -11,4 +11,11 @@ const (
 
 	// Spot parent path
 	API_V3 = "/api/v3"
+
+	// UM Futures
+	API_UM_FUTURES_ENDPOINT = "https://fapi.binance.com"
+
+	// UM Futures path
+	FAPI_V1      = "/fapi/v1"
+	FUTURES_DATA = "/futures/data"
 )

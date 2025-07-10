@@ -36,7 +36,7 @@ type ParamsSpotExchangeInfo struct {
 	SymbolStatus       SymbolStatus        `json:"symbolStatus,omitempty"`
 }
 
-type ExchangeSymbol struct {
+type SpotExchangeSymbol struct {
 	Symbol                          string                `json:"symbol"`
 	Status                          string                `json:"status"`
 	BaseAsset                       string                `json:"baseAsset"`
@@ -75,22 +75,22 @@ type SOR struct {
 	Symbols   []string `json:"symbols"`
 }
 
-type ExchangeInfo struct {
-	Timezone        string           `json:"timezone"`
-	ServerTime      int64            `json:"serverTime"`
-	RateLimits      []RateLimier     `json:"rateLimits"`
-	ExchangeFilters []any            `json:"exchangeFilters"`
-	Symbols         []ExchangeSymbol `json:"symbols"`
-	Sors            []SOR            `json:"sors"`
+type SpotExchangeInfo struct {
+	Timezone        string               `json:"timezone"`
+	ServerTime      int64                `json:"serverTime"`
+	RateLimits      []RateLimier         `json:"rateLimits"`
+	ExchangeFilters []any                `json:"exchangeFilters"`
+	Symbols         []SpotExchangeSymbol `json:"symbols"`
+	Sors            []SOR                `json:"sors"`
 }
 
-func GetSpotExchangeInfo(params ParamsSpotExchangeInfo) (exchangeInfo ExchangeInfo, err error) {
+func GetSpotExchangeInfo(params ParamsSpotExchangeInfo) (exchangeInfo SpotExchangeInfo, err error) {
 	req := Req[ParamsSpotExchangeInfo]{
 		BaseURL: API_ENDPOINT,
 		Path:    API_V3 + "/exchangeInfo",
 		Params:  params,
 	}
-	resp, err := Request[ParamsSpotExchangeInfo, ExchangeInfo](req)
+	resp, err := Request[ParamsSpotExchangeInfo, SpotExchangeInfo](req)
 	if err != nil {
 		return
 	}

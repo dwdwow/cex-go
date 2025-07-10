@@ -2,6 +2,7 @@ package bnc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -32,12 +33,6 @@ func Request[ReqParams, RespData any](reqInfo Req[ReqParams]) (resp Resp[RespDat
 	url := reqInfo.BaseURL + reqInfo.Path + "?" + structToSignedQuery(reqInfo.Params, reqInfo.APIPvk)
 	req, err := http.NewRequest(reqInfo.Method, url, nil)
 	if err != nil {
-		if err == io.EOF && reqInfo.retry < 5 {
-			reqInfo.retry++
-			slog.Error("bnc: request EOF, retry", "retry", reqInfo.retry, "url", url, "error", err)
-			time.Sleep(time.Second)
-			return Request[ReqParams, RespData](reqInfo)
-		}
 		return
 	}
 	if reqInfo.RespInMicroseconds {
@@ -46,6 +41,12 @@ func Request[ReqParams, RespData any](reqInfo Req[ReqParams]) (resp Resp[RespDat
 	req.Header = reqInfo.Header
 	rawResp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		if errors.Is(err, io.EOF) && reqInfo.retry < 5 {
+			reqInfo.retry++
+			slog.Error("bnc: request EOF, retry", "retry", reqInfo.retry, "url", url, "error", err)
+			time.Sleep(time.Second)
+			return Request[ReqParams, RespData](reqInfo)
+		}
 		return
 	}
 	defer rawResp.Body.Close()

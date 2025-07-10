@@ -5,25 +5,70 @@ import (
 	"strconv"
 )
 
-type OrderBook struct {
+type RawOrderBook struct {
+	// Common
 	LastUpdateID int64      `json:"lastUpdateId"`
 	Bids         [][]string `json:"bids"`
 	Asks         [][]string `json:"asks"`
+
+	// Futures
+	EventTime       int64 `json:"E"`
+	TransactionTime int64 `json:"T"`
+}
+
+type OrderBook struct {
+	// Common
+	LastUpdateID int64       `json:"lastUpdateId"`
+	Bids         [][]float64 `json:"bids"`
+	Asks         [][]float64 `json:"asks"`
+
+	// Futures
+	EventTime       int64 `json:"E"`
+	TransactionTime int64 `json:"T"`
 }
 
 type ParamsOrderBook struct {
 	Symbol string `json:"symbol"`
-	Limit  int64  `json:"limit,omitempty"` // default 100, range [100, 5000]
+	Limit  int64  `json:"limit,omitempty"` // for spot, default 100, range [100, 5000]; for futures, default 500, range 5, 10, 20, 50, [100, 1000]
 }
 
-func GetSpotOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
+func GetSpotRawOrderBook(params ParamsOrderBook) (orderBook RawOrderBook, err error) {
 	req := Req[ParamsOrderBook]{
 		BaseURL: API_ENDPOINT,
 		Path:    API_V3 + "/depth",
 		Params:  params,
 	}
-	resp, err := Request[ParamsOrderBook, OrderBook](req)
+	resp, err := Request[ParamsOrderBook, RawOrderBook](req)
 	return resp.Data, err
+}
+
+func GetSpotOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
+	rawOrderBook, err := GetSpotRawOrderBook(params)
+	if err != nil {
+		return
+	}
+	orderBook.LastUpdateID = rawOrderBook.LastUpdateID
+	orderBook.Bids = make([][]float64, len(rawOrderBook.Bids))
+	orderBook.Asks = make([][]float64, len(rawOrderBook.Asks))
+	for i, bid := range rawOrderBook.Bids {
+		orderBook.Bids[i] = make([]float64, len(bid))
+		for j, s := range bid {
+			orderBook.Bids[i][j], err = strconv.ParseFloat(s, 64)
+			if err != nil {
+				return
+			}
+		}
+	}
+	for i, ask := range rawOrderBook.Asks {
+		orderBook.Asks[i] = make([]float64, len(ask))
+		for j, s := range ask {
+			orderBook.Asks[i][j], err = strconv.ParseFloat(s, 64)
+			if err != nil {
+				return
+			}
+		}
+	}
+	return
 }
 
 type Trade struct {
@@ -33,7 +78,8 @@ type Trade struct {
 	QuoteQty     string `json:"quoteQty"`
 	Time         int64  `json:"time"`
 	IsBuyerMaker bool   `json:"isBuyerMaker"`
-	IsBestMatch  bool   `json:"isBestMatch"`
+	// Spot
+	IsBestMatch bool `json:"isBestMatch"`
 }
 
 type ParamsTrades struct {
@@ -53,7 +99,7 @@ func GetSpotTrades(params ParamsTrades) (trades []Trade, err error) {
 
 type ParamsHistoricalTrades struct {
 	Symbol string `json:"symbol"`
-	Limit  int64  `json:"limit,omitempty"` // default 500, range [500, 1000]
+	Limit  int64  `json:"limit,omitempty"` // for spot, default 500, range [500, 1000]; for futures, default 100, range [100, 500]
 	FromID int64  `json:"fromId,omitempty"`
 }
 
@@ -202,12 +248,16 @@ func (k Kline) TakerBuyQuoteAssetVolume() float64 {
 }
 
 type ParamsKlines struct {
-	Symbol    string        `json:"symbol"`
+	Symbol    string        `json:"symbol,omitempty"`
 	Interval  KlineInterval `json:"interval"`
 	StartTime int64         `json:"startTime,omitempty"`
 	EndTime   int64         `json:"endTime,omitempty"`
 	TimeZone  string        `json:"timeZone,omitempty"`
-	Limit     int64         `json:"limit,omitempty"` // default 500, range [500, 1000]
+	Limit     int64         `json:"limit,omitempty"` // default 500, range [500, 1000], for continuous contract kline, max is 1500
+
+	// Continuous Contract, Index Price Kline
+	Pair         string       `json:"pair,omitempty"`
+	ContractType ContractType `json:"contractType,omitempty"` // PERPETUAL, CURRENT_QUARTER, NEXT_QUARTER
 }
 
 func GetSpotRawKlines(params ParamsKlines) (klines []RawKline, err error) {
@@ -251,7 +301,7 @@ func GetSpotAvgPrice(params ParamsAvgPrice) (avgPrice AvgPrice, err error) {
 	return res.Data, err
 }
 
-type Ticker24Hr struct {
+type Ticker24HrStats struct {
 	// MINI FULL
 	Symbol      string  `json:"symbol"`
 	LastPrice   float64 `json:"lastPrice,string"`
@@ -271,27 +321,29 @@ type Ticker24Hr struct {
 	WeightedAvgPrice   float64 `json:"weightedAvgPrice,string"`
 	PrevClosePrice     float64 `json:"prevClosePrice,string"`
 	LastQty            float64 `json:"lastQty,string"`
-	BidPrice           float64 `json:"bidPrice,string"`
-	BidQty             float64 `json:"bidQty,string"`
-	AskPrice           float64 `json:"askPrice,string"`
-	AskQty             float64 `json:"askQty,string"`
+	// FULL, SPOT
+	BidPrice float64 `json:"bidPrice,string"`
+	BidQty   float64 `json:"bidQty,string"`
+	AskPrice float64 `json:"askPrice,string"`
+	AskQty   float64 `json:"askQty,string"`
 }
 
 type ParamsTicker24HrStats struct {
 	Symbol string `json:"symbol"`
-	Type   string `json:"type,omitempty"` // FULL or MINI, default is FULL
+	// SPOT
+	Type string `json:"type,omitempty"` // FULL or MINI, default is FULL
 }
 
-func GetSpotTicker24HrStats(params ParamsTicker24HrStats) (ticker Ticker24Hr, err error) {
+func GetSpotTicker24HrStats(params ParamsTicker24HrStats) (ticker Ticker24HrStats, err error) {
 	if params.Symbol == "" {
-		return Ticker24Hr{}, errors.New("bnc: GetSpotTicker24Hhr, symbol is required")
+		return Ticker24HrStats{}, errors.New("bnc: GetSpotTicker24Hhr, symbol is required")
 	}
 	req := Req[ParamsTicker24HrStats]{
 		BaseURL: API_ENDPOINT,
 		Path:    API_V3 + "/ticker/24hr",
 		Params:  params,
 	}
-	res, err := Request[ParamsTicker24HrStats, Ticker24Hr](req)
+	res, err := Request[ParamsTicker24HrStats, Ticker24HrStats](req)
 	return res.Data, err
 }
 
@@ -300,13 +352,13 @@ type ParamsTicker24HrStatsList struct {
 	Type    string   `json:"type,omitempty"` // FULL or MINI, default is FULL
 }
 
-func GetSpotTicker24HrStatsList(params ParamsTicker24HrStatsList) (tickers []Ticker24Hr, err error) {
+func GetSpotTicker24HrStatsList(params ParamsTicker24HrStatsList) (tickers []Ticker24HrStats, err error) {
 	req := Req[ParamsTicker24HrStatsList]{
 		BaseURL: API_ENDPOINT,
 		Path:    API_V3 + "/ticker/24hr",
 		Params:  params,
 	}
-	res, err := Request[ParamsTicker24HrStatsList, []Ticker24Hr](req)
+	res, err := Request[ParamsTicker24HrStatsList, []Ticker24HrStats](req)
 	return res.Data, err
 }
 
@@ -366,6 +418,8 @@ func GetSpotTickerTradingDayStatsList(params ParamsTickerTradingDayStatsList) (t
 type TickerPrice struct {
 	Symbol string  `json:"symbol"`
 	Price  float64 `json:"price,string"`
+	// Futures
+	Time int64 `json:"time"`
 }
 
 type ParamsTickerPrice struct {
@@ -405,6 +459,8 @@ type TickerBookTicker struct {
 	BidQty   float64 `json:"bidQty,string"`
 	AskPrice float64 `json:"askPrice,string"`
 	AskQty   float64 `json:"askQty,string"`
+	// Futures
+	Time int64 `json:"time"`
 }
 
 type ParamsTickerBookTicker struct {
