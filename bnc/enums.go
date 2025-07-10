@@ -152,3 +152,24 @@ const (
 	EXPIRE_BOTH  STPMode = "EXPIRE_BOTH"
 	DECREMENT    STPMode = "DECREMENT"
 )
+
+type KlineInterval string
+
+const (
+	KLINE_INTERVAL_1s  KlineInterval = "1s"
+	KLINE_INTERVAL_1m  KlineInterval = "1m"
+	KLINE_INTERVAL_3m  KlineInterval = "3m"
+	KLINE_INTERVAL_5m  KlineInterval = "5m"
+	KLINE_INTERVAL_15m KlineInterval = "15m"
+	KLINE_INTERVAL_30m KlineInterval = "30m"
+	KLINE_INTERVAL_1h  KlineInterval = "1h"
+	KLINE_INTERVAL_2h  KlineInterval = "2h"
+	KLINE_INTERVAL_4h  KlineInterval = "4h"
+	KLINE_INTERVAL_6h  KlineInterval = "6h"
+	KLINE_INTERVAL_8h  KlineInterval = "8h"
+	KLINE_INTERVAL_12h KlineInterval = "12h"
+	KLINE_INTERVAL_1d  KlineInterval = "1d"
+	KLINE_INTERVAL_3d  KlineInterval = "3d"
+	KLINE_INTERVAL_1w  KlineInterval = "1w"
+	KLINE_INTERVAL_1M  KlineInterval = "1M"
+)
