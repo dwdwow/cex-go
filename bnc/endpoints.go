@@ -18,4 +18,10 @@ const (
 	// UM Futures path
 	FAPI_V1      = "/fapi/v1"
 	FUTURES_DATA = "/futures/data"
+
+	// CM Futures
+	API_CM_FUTURES_ENDPOINT = "https://dapi.binance.com"
+
+	// CM Futures path
+	DAPI_V1 = "/dapi/v1"
 )

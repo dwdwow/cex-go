@@ -153,8 +153,8 @@ func TestGetSpotTickerPriceList(t *testing.T) {
 	fmt.Println(len(tickers), tickers[0])
 }
 
-func TestGetSpotTickerBookTicker(t *testing.T) {
-	ticker, err := GetSpotTickerBookTicker(ParamsTickerBookTicker{
+func TestGetSpotOrderBookTicker(t *testing.T) {
+	ticker, err := GetSpotOrderBookTicker(ParamsOrderBookTicker{
 		Symbol: "BTCUSDT",
 	})
 	if err != nil {

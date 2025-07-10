@@ -246,7 +246,7 @@ type FundingRate struct {
 }
 
 type ParamsFundingRate struct {
-	Symbol    string `json:"symbol,omitempty"`
+	Symbol    string `json:"symbol,omitempty"` // for um, default all symbols; for cm, is required
 	StartTime int64  `json:"startTime,omitempty"`
 	EndTime   int64  `json:"endTime,omitempty"`
 	Limit     int64  `json:"limit,omitempty"` // default 100, range [100, 1000]
@@ -323,25 +323,25 @@ func GetUMTickerPriceList() (ticker []TickerPrice, err error) {
 	return resp.Data, err
 }
 
-func GetUMTickerBookTicker(params ParamsTickerBookTicker) (ticker TickerBookTicker, err error) {
+func GetUMOrderBookTicker(params ParamsOrderBookTicker) (ticker OrderBookTicker, err error) {
 	if params.Symbol == "" {
-		return TickerBookTicker{}, errors.New("bnc: symbol is required")
+		return OrderBookTicker{}, errors.New("bnc: symbol is required")
 	}
-	req := Req[ParamsTickerBookTicker]{
+	req := Req[ParamsOrderBookTicker]{
 		BaseURL: API_UM_FUTURES_ENDPOINT,
 		Path:    FAPI_V1 + "/ticker/bookTicker",
 		Params:  params,
 	}
-	resp, err := Request[ParamsTickerBookTicker, TickerBookTicker](req)
+	resp, err := Request[ParamsOrderBookTicker, OrderBookTicker](req)
 	return resp.Data, err
 }
 
-func GetUMTickerBookTickerList() (ticker []TickerBookTicker, err error) {
+func GetUMTickerBookTickerList() (ticker []OrderBookTicker, err error) {
 	req := Req[ParamsTickerBookTickerList]{
 		BaseURL: API_UM_FUTURES_ENDPOINT,
 		Path:    FAPI_V1 + "/ticker/bookTicker",
 	}
-	resp, err := Request[ParamsTickerBookTickerList, []TickerBookTicker](req)
+	resp, err := Request[ParamsTickerBookTickerList, []OrderBookTicker](req)
 	return resp.Data, err
 }
 
@@ -371,6 +371,9 @@ type OpenInterest struct {
 	Symbol       string  `json:"symbol"`
 	OpenInterest float64 `json:"openInterest,string"`
 	Time         int64   `json:"time"`
+	// CM Futures
+	Pair         string       `json:"pair"`
+	ContractType ContractType `json:"contractType"`
 }
 
 type ParamsOpenInterest struct {
@@ -390,7 +393,7 @@ func GetUMOpenInterest(params ParamsOpenInterest) (openInterest OpenInterest, er
 	return resp.Data, err
 }
 
-type OpenInterestStats struct {
+type UMOpenInterestStats struct {
 	Symbol               string  `json:"symbol"`
 	SumOpenInterest      float64 `json:"sumOpenInterest,string"`
 	SumOpenInterestValue float64 `json:"sumOpenInterestValue,string"`
@@ -398,7 +401,7 @@ type OpenInterestStats struct {
 	Timestamp            int64   `json:"timestamp"`
 }
 
-type ParamsOpenInterestStats struct {
+type ParamsUMOpenInterestStats struct {
 	Symbol    string `json:"symbol"`
 	Period    string `json:"period"` // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
 	Limit     int64  `json:"limit,omitempty"`
@@ -406,23 +409,23 @@ type ParamsOpenInterestStats struct {
 	StartTime int64  `json:"startTime,omitempty"`
 }
 
-func GetUMOpenInterestStats(params ParamsOpenInterestStats) (openInterestStats []OpenInterestStats, err error) {
+func GetUMOpenInterestStats(params ParamsUMOpenInterestStats) (openInterestStats []UMOpenInterestStats, err error) {
 	if params.Symbol == "" {
 		return nil, errors.New("bnc: symbol is required")
 	}
 	if params.Period == "" {
 		return nil, errors.New("bnc: period is required")
 	}
-	req := Req[ParamsOpenInterestStats]{
+	req := Req[ParamsUMOpenInterestStats]{
 		BaseURL: API_UM_FUTURES_ENDPOINT,
 		Path:    FUTURES_DATA + "/openInterestHist",
 		Params:  params,
 	}
-	resp, err := Request[ParamsOpenInterestStats, []OpenInterestStats](req)
+	resp, err := Request[ParamsUMOpenInterestStats, []UMOpenInterestStats](req)
 	return resp.Data, err
 }
 
-type LongShortRatio struct {
+type UMLongShortRatio struct {
 	Symbol         string  `json:"symbol"`                // e.g. "BTCUSDT"
 	LongShortRatio float64 `json:"longShortRatio,string"` // Long/short position/account ratio of top traders
 	LongAccount    float64 `json:"longAccount,string"`    // Long positions ratio of top traders
@@ -430,7 +433,7 @@ type LongShortRatio struct {
 	Timestamp      int64   `json:"timestamp"`             // Unix timestamp in milliseconds
 }
 
-type ParamsLongShortRatio struct {
+type ParamsUMLongShortRatio struct {
 	Symbol    string `json:"symbol"`
 	Period    string `json:"period"`          // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
 	Limit     int64  `json:"limit,omitempty"` // default 30, max 500
@@ -438,51 +441,51 @@ type ParamsLongShortRatio struct {
 	EndTime   int64  `json:"endTime,omitempty"`
 }
 
-func GetUMTopTraderLongShortPositionRatio(params ParamsLongShortRatio) (longShortRatio []LongShortRatio, err error) {
+func GetUMTopTraderLongShortPositionRatio(params ParamsUMLongShortRatio) (longShortRatio []UMLongShortRatio, err error) {
 	if params.Symbol == "" {
 		return nil, errors.New("bnc: symbol is required")
 	}
 	if params.Period == "" {
 		return nil, errors.New("bnc: period is required")
 	}
-	req := Req[ParamsLongShortRatio]{
+	req := Req[ParamsUMLongShortRatio]{
 		BaseURL: API_UM_FUTURES_ENDPOINT,
 		Path:    FUTURES_DATA + "/topLongShortPositionRatio",
 		Params:  params,
 	}
-	resp, err := Request[ParamsLongShortRatio, []LongShortRatio](req)
+	resp, err := Request[ParamsUMLongShortRatio, []UMLongShortRatio](req)
 	return resp.Data, err
 }
 
-func GetUMTopTraderLongShortAccountRatio(params ParamsLongShortRatio) (longShortRatio []LongShortRatio, err error) {
+func GetUMTopTraderLongShortAccountRatio(params ParamsUMLongShortRatio) (longShortRatio []UMLongShortRatio, err error) {
 	if params.Symbol == "" {
 		return nil, errors.New("bnc: symbol is required")
 	}
 	if params.Period == "" {
 		return nil, errors.New("bnc: period is required")
 	}
-	req := Req[ParamsLongShortRatio]{
+	req := Req[ParamsUMLongShortRatio]{
 		BaseURL: API_UM_FUTURES_ENDPOINT,
 		Path:    FUTURES_DATA + "/topLongShortAccountRatio",
 		Params:  params,
 	}
-	resp, err := Request[ParamsLongShortRatio, []LongShortRatio](req)
+	resp, err := Request[ParamsUMLongShortRatio, []UMLongShortRatio](req)
 	return resp.Data, err
 }
 
-func GetUMGlobalLongShortAccountRatio(params ParamsLongShortRatio) (longShortRatio []LongShortRatio, err error) {
+func GetUMGlobalLongShortAccountRatio(params ParamsUMLongShortRatio) (longShortRatio []UMLongShortRatio, err error) {
 	if params.Symbol == "" {
 		return nil, errors.New("bnc: symbol is required")
 	}
 	if params.Period == "" {
 		return nil, errors.New("bnc: period is required")
 	}
-	req := Req[ParamsLongShortRatio]{
+	req := Req[ParamsUMLongShortRatio]{
 		BaseURL: API_UM_FUTURES_ENDPOINT,
 		Path:    FUTURES_DATA + "/globalLongShortAccountRatio",
 		Params:  params,
 	}
-	resp, err := Request[ParamsLongShortRatio, []LongShortRatio](req)
+	resp, err := Request[ParamsUMLongShortRatio, []UMLongShortRatio](req)
 	return resp.Data, err
 }
 
@@ -637,10 +640,11 @@ func GetUMMultiAssetsModeAssetIndexList() (multiAssetsModeAssetIndex []MultiAsse
 }
 
 type IndexPriceConstituentInfo struct {
-	Exchange string  `json:"exchange"`
-	Symbol   string  `json:"symbol"`
-	Price    float64 `json:"price,string"`
-	Weight   float64 `json:"weight,string"`
+	Exchange string `json:"exchange"`
+	Symbol   string `json:"symbol"`
+	// UM Futures
+	Price  float64 `json:"price,string"`
+	Weight float64 `json:"weight,string"`
 }
 
 type IndexPriceConstituents struct {

@@ -259,8 +259,8 @@ func TestGetUMTickerPriceList(t *testing.T) {
 	fmt.Println(ticker[0])
 }
 
-func TestGetUMTickerBookTicker(t *testing.T) {
-	ticker, err := GetUMTickerBookTicker(ParamsTickerBookTicker{
+func TestGetUMOrderBookTicker(t *testing.T) {
+	ticker, err := GetUMOrderBookTicker(ParamsOrderBookTicker{
 		Symbol: "BTCUSDT",
 	})
 	if err != nil {
@@ -299,7 +299,7 @@ func TestGetUMOpenInterest(t *testing.T) {
 }
 
 func TestGetUMOpenInterestStats(t *testing.T) {
-	openInterestStats, err := GetUMOpenInterestStats(ParamsOpenInterestStats{
+	openInterestStats, err := GetUMOpenInterestStats(ParamsUMOpenInterestStats{
 		Symbol: "BTCUSDT",
 		Period: "5m",
 	})
@@ -310,7 +310,7 @@ func TestGetUMOpenInterestStats(t *testing.T) {
 }
 
 func TestGetUMTopTraderLongShortPositionRatio(t *testing.T) {
-	longShortRatio, err := GetUMTopTraderLongShortPositionRatio(ParamsLongShortRatio{
+	longShortRatio, err := GetUMTopTraderLongShortPositionRatio(ParamsUMLongShortRatio{
 		Symbol: "BTCUSDT",
 		Period: "5m",
 	})
@@ -321,7 +321,7 @@ func TestGetUMTopTraderLongShortPositionRatio(t *testing.T) {
 }
 
 func TestGetUMTopTraderLongShortAccountRatio(t *testing.T) {
-	longShortRatio, err := GetUMTopTraderLongShortAccountRatio(ParamsLongShortRatio{
+	longShortRatio, err := GetUMTopTraderLongShortAccountRatio(ParamsUMLongShortRatio{
 		Symbol: "BTCUSDT",
 		Period: "5m",
 	})
@@ -332,7 +332,7 @@ func TestGetUMTopTraderLongShortAccountRatio(t *testing.T) {
 }
 
 func TestGetUMGlobalLongShortAccountRatio(t *testing.T) {
-	longShortRatio, err := GetUMGlobalLongShortAccountRatio(ParamsLongShortRatio{
+	longShortRatio, err := GetUMGlobalLongShortAccountRatio(ParamsUMLongShortRatio{
 		Symbol: "BTCUSDT",
 		Period: "5m",
 	})

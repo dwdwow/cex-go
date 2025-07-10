@@ -10,8 +10,8 @@ func GetUMServerTime() (serverTime ServerTime, err error) {
 }
 
 type FuturesExchangeSymbol struct {
-	Symbol             string       `json:"symbol"`
-	Pair               string       `json:"pair"`
+	Symbol             string       `json:"symbol"` // e.g. SPOT/PERPETUAL:"BTCUSDT", Deliviry:"BTCUSDT_200925" CM:"BTCUSD_PERP"
+	Pair               string       `json:"pair"`   // underlying symbol e.g. "BTCUSDT" "BTCUSD"
 	ContractType       ContractType `json:"contractType"`
 	DeliveryDate       int64        `json:"deliveryDate"`
 	OnboardDate        int64        `json:"onboardDate"`

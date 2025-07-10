@@ -43,7 +43,7 @@ func Request[ReqParams, RespData any](reqInfo Req[ReqParams]) (resp Resp[RespDat
 	if err != nil {
 		if errors.Is(err, io.EOF) && reqInfo.retry < 5 {
 			reqInfo.retry++
-			slog.Error("bnc: request EOF, retry", "retry", reqInfo.retry, "url", url, "error", err)
+			slog.Error("bnc: request EOF, retry", "retry", reqInfo.retry, "url", url)
 			time.Sleep(time.Second)
 			return Request[ReqParams, RespData](reqInfo)
 		}

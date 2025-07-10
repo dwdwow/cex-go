@@ -14,6 +14,10 @@ type RawOrderBook struct {
 	// Futures
 	EventTime       int64 `json:"E"`
 	TransactionTime int64 `json:"T"`
+
+	// CM Futures
+	Symbol string `json:"symbol"`
+	Pair   string `json:"pair"`
 }
 
 type OrderBook struct {
@@ -25,6 +29,10 @@ type OrderBook struct {
 	// Futures
 	EventTime       int64 `json:"E"`
 	TransactionTime int64 `json:"T"`
+
+	// CM Futures
+	Symbol string `json:"symbol"`
+	Pair   string `json:"pair"`
 }
 
 type ParamsOrderBook struct {
@@ -247,6 +255,10 @@ func (k Kline) TakerBuyQuoteAssetVolume() float64 {
 	return k[10]
 }
 
+// ParamsKlines is for spot, um, cm
+// For spot, symbol is required
+// For um continuous kline, pair is required
+// For cm continuous kline, symbol and pair are required
 type ParamsKlines struct {
 	Symbol    string        `json:"symbol,omitempty"`
 	Interval  KlineInterval `json:"interval"`
@@ -420,6 +432,8 @@ type TickerPrice struct {
 	Price  float64 `json:"price,string"`
 	// Futures
 	Time int64 `json:"time"`
+	// CM Futures
+	Pair string `json:"pair"`
 }
 
 type ParamsTickerPrice struct {
@@ -453,7 +467,7 @@ func GetSpotTickerPriceList(params ParamsTickerPriceList) (tickers []TickerPrice
 	return resp.Data, err
 }
 
-type TickerBookTicker struct {
+type OrderBookTicker struct {
 	Symbol   string  `json:"symbol"`
 	BidPrice float64 `json:"bidPrice,string"`
 	BidQty   float64 `json:"bidQty,string"`
@@ -463,20 +477,20 @@ type TickerBookTicker struct {
 	Time int64 `json:"time"`
 }
 
-type ParamsTickerBookTicker struct {
+type ParamsOrderBookTicker struct {
 	Symbol string `json:"symbol"`
 }
 
-func GetSpotTickerBookTicker(params ParamsTickerBookTicker) (ticker TickerBookTicker, err error) {
+func GetSpotOrderBookTicker(params ParamsOrderBookTicker) (ticker OrderBookTicker, err error) {
 	if params.Symbol == "" {
-		return TickerBookTicker{}, errors.New("bnc: GetSpotTickerBookTicker, symbol is required")
+		return OrderBookTicker{}, errors.New("bnc: GetSpotTickerBookTicker, symbol is required")
 	}
-	req := Req[ParamsTickerBookTicker]{
+	req := Req[ParamsOrderBookTicker]{
 		BaseURL: API_ENDPOINT,
 		Path:    API_V3 + "/ticker/bookTicker",
 		Params:  params,
 	}
-	resp, err := Request[ParamsTickerBookTicker, TickerBookTicker](req)
+	resp, err := Request[ParamsOrderBookTicker, OrderBookTicker](req)
 	return resp.Data, err
 }
 
@@ -484,13 +498,13 @@ type ParamsTickerBookTickerList struct {
 	Symbols []string `json:"symbols,omitempty"`
 }
 
-func GetSpotTickerBookTickerList(params ParamsTickerBookTickerList) (tickers []TickerBookTicker, err error) {
+func GetSpotTickerBookTickerList(params ParamsTickerBookTickerList) (tickers []OrderBookTicker, err error) {
 	req := Req[ParamsTickerBookTickerList]{
 		BaseURL: API_ENDPOINT,
 		Path:    API_V3 + "/ticker/bookTicker",
 		Params:  params,
 	}
-	resp, err := Request[ParamsTickerBookTickerList, []TickerBookTicker](req)
+	resp, err := Request[ParamsTickerBookTickerList, []OrderBookTicker](req)
 	return resp.Data, err
 }
 
