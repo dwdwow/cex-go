@@ -241,3 +241,15 @@ const (
 	PRICE_MATCH_QUEUE_10    PriceMatch = "QUEUE_10"
 	PRICE_MATCH_QUEUE_20    PriceMatch = "QUEUE_20"
 )
+
+type OrderExecutionType string
+
+const (
+	OrderExecutionTypeNew         OrderExecutionType = "NEW"
+	OrderExecutionTypeCanceled    OrderExecutionType = "CANCELED"
+	OrderExecutionTypeReplaced    OrderExecutionType = "REPLACED"
+	OrderExecutionRejected        OrderExecutionType = "REJECTED"
+	OrderExecutionTrade           OrderExecutionType = "TRADE"
+	OrderExecutionExpired         OrderExecutionType = "EXPIRED"
+	OrderExecutionTradePrevention OrderExecutionType = "TRADE_PREVENTION"
+)

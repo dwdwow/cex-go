@@ -24,4 +24,12 @@ const (
 
 	// CM Futures path
 	DAPI_V1 = "/dapi/v1"
+
+	// Ws
+	// Spot
+	WSS_SPOT_ENDPOINT = "wss://stream.binance.com:9443/ws"
+	// UM Futures
+	WSS_UM_FUTURES_ENDPOINT = "wss://fstream.binance.com/ws"
+	// CM Futures
+	WSS_CM_FUTURES_ENDPOINT = "wss://dstream.binance.com/ws"
 )
