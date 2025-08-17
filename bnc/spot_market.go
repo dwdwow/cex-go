@@ -3,6 +3,8 @@ package bnc
 import (
 	"errors"
 	"strconv"
+
+	"github.com/dwdwow/cex-go/ob"
 )
 
 type RawOrderBook struct {
@@ -23,8 +25,8 @@ type RawOrderBook struct {
 type OrderBook struct {
 	// Common
 	LastUpdateID int64       `json:"lastUpdateId"`
-	Bids         [][]float64 `json:"bids"`
-	Asks         [][]float64 `json:"asks"`
+	Bids         ob.Book     `json:"bids"`
+	Asks         ob.Book     `json:"asks"`
 
 	// Futures
 	EventTime       int64 `json:"E"`
@@ -56,8 +58,8 @@ func GetSpotOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 		return
 	}
 	orderBook.LastUpdateID = rawOrderBook.LastUpdateID
-	orderBook.Bids = make([][]float64, len(rawOrderBook.Bids))
-	orderBook.Asks = make([][]float64, len(rawOrderBook.Asks))
+	orderBook.Bids = make(ob.Book, len(rawOrderBook.Bids))
+	orderBook.Asks = make(ob.Book, len(rawOrderBook.Asks))
 	for i, bid := range rawOrderBook.Bids {
 		orderBook.Bids[i] = make([]float64, len(bid))
 		for j, s := range bid {

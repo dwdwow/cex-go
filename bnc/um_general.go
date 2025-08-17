@@ -43,17 +43,17 @@ type FuturesExchangeSymbol struct {
 	PermissionSets     []any            `json:"permissionSets"`
 }
 
-func (info FuturesExchangeSymbol) ToPair() (cex.Pair, error) {
+func (info FuturesExchangeSymbol) ToSymbol() (cex.Symbol, error) {
 	filtersInfo, err := AnalyzeExchangeSymbolFilters(info.Filters)
 	if err != nil {
-		return cex.Pair{}, err
+		return cex.Symbol{}, err
 	}
-	pair := cex.Pair{
+	pair := cex.Symbol{
 		Cex:         cex.BINANCE,
-		Type:        cex.PairTypeFutures,
+		Type:        cex.SYMBOL_TYPE_UM_FUTURES,
 		Asset:       info.BaseAsset,
 		Quote:       info.QuoteAsset,
-		PairSymbol:  info.Symbol,
+		Symbol:      info.Symbol,
 		QPrecision:  filtersInfo.Qprec,
 		PPrecision:  filtersInfo.Pprec,
 		Tradable:    info.Status == SYMBOL_STATUS_TRADING || info.ContractStatus == CONTRACT_STATUS_TRADING,
@@ -93,17 +93,17 @@ func GetUMExchangeInfo() (exchangeInfo FuturesExchangeInfo, err error) {
 	return resp.Data, err
 }
 
-func GetUMPairs() (pairs []cex.Pair, err error) {
+func GetUMSymbols() (symbols []cex.Symbol, err error) {
 	exchangeInfo, err := GetUMExchangeInfo()
 	if err != nil {
 		return nil, err
 	}
 	for _, symbol := range exchangeInfo.Symbols {
-		pair, err := symbol.ToPair()
+		s, err := symbol.ToSymbol()
 		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, pair)
+		symbols = append(symbols, s)
 	}
-	return pairs, nil
+	return
 }

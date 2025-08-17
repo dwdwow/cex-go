@@ -1,30 +1,35 @@
 package cex
 
-type PairType string
+import "slices"
+
+type SymbolType string
 
 const (
-	PairTypeSpot    PairType = "SPOT"
-	PairTypeFutures PairType = "FUTURES"
+	SYMBOL_TYPE_SPOT       SymbolType = "SPOT"
+	SYMBOL_TYPE_UM_FUTURES SymbolType = "UM_FUTURES"
+	SYMBOL_TYPE_CM_FUTURES SymbolType = "CM_FUTURES"
 )
 
-func NotPairType(t PairType) bool {
-	switch t {
-	case PairTypeSpot, PairTypeFutures:
-		return false
-	}
-	return true
+var SymbolTypes = []SymbolType{
+	SYMBOL_TYPE_SPOT,
+	SYMBOL_TYPE_UM_FUTURES,
+	SYMBOL_TYPE_CM_FUTURES,
 }
 
-type Pair struct {
+func NotSymbolType(t SymbolType) bool {
+	return !slices.Contains(SymbolTypes, t)
+}
+
+type Symbol struct {
 	// must be contained
-	Cex        CexName  `json:"cex" bson:"cex"`
-	Type       PairType `json:"type" bson:"type"`
-	Asset      string   `json:"asset" bson:"asset"`
-	Quote      string   `json:"quote" bson:"quote"`
-	PairSymbol string   `json:"pairSymbol" bson:"pairSymbol"`
-	MidSymbol  string   `json:"midSymbol" bson:"midSymbol"`
-	QPrecision int      `json:"qPrecision" bson:"qPrecision"`
-	PPrecision int      `json:"pPrecision" bson:"pPrecision"`
+	Cex        CexName    `json:"cex" bson:"cex"`
+	Type       SymbolType `json:"type" bson:"type"`
+	Asset      string     `json:"asset" bson:"asset"`
+	Quote      string     `json:"quote" bson:"quote"`
+	Symbol     string     `json:"symbol" bson:"symbol"`
+	MidSymbol  string     `json:"midSymbol" bson:"midSymbol"`
+	QPrecision int        `json:"qPrecision" bson:"qPrecision"`
+	PPrecision int        `json:"pPrecision" bson:"pPrecision"`
 
 	// may be omitted
 	TakerFeeTier  float64 `json:"takerFeeTier" bson:"takerFeeTier"`

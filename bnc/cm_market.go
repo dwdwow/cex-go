@@ -3,6 +3,8 @@ package bnc
 import (
 	"errors"
 	"strconv"
+
+	"github.com/dwdwow/cex-go/ob"
 )
 
 func GetCMRawOrderBook(params ParamsOrderBook) (orderBook RawOrderBook, err error) {
@@ -28,8 +30,8 @@ func GetCMOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 	orderBook.Pair = rawOrderBook.Pair
 	orderBook.EventTime = rawOrderBook.EventTime
 	orderBook.TransactionTime = rawOrderBook.TransactionTime
-	orderBook.Bids = make([][]float64, len(rawOrderBook.Bids))
-	orderBook.Asks = make([][]float64, len(rawOrderBook.Asks))
+	orderBook.Bids = make(ob.Book, len(rawOrderBook.Bids))
+	orderBook.Asks = make(ob.Book, len(rawOrderBook.Asks))
 	for i, bid := range rawOrderBook.Bids {
 		orderBook.Bids[i] = make([]float64, len(bid))
 		for j, s := range bid {

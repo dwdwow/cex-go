@@ -139,17 +139,17 @@ func AnalyzeExchangeSymbolFilters(filters []map[string]any) (info ExchangeSymbol
 	return info, nil
 }
 
-func (info SpotExchangeSymbol) ToPair() (cex.Pair, error) {
+func (info SpotExchangeSymbol) ToSymbol() (cex.Symbol, error) {
 	filtersInfo, err := AnalyzeExchangeSymbolFilters(info.Filters)
 	if err != nil {
-		return cex.Pair{}, err
+		return cex.Symbol{}, err
 	}
-	pair := cex.Pair{
+	pair := cex.Symbol{
 		Cex:        cex.BINANCE,
-		Type:       cex.PairTypeSpot,
+		Type:       cex.SYMBOL_TYPE_SPOT,
 		Asset:      info.BaseAsset,
 		Quote:      info.QuoteAsset,
-		PairSymbol: info.Symbol,
+		Symbol:     info.Symbol,
 		QPrecision: filtersInfo.Qprec,
 		PPrecision: filtersInfo.Pprec,
 		Tradable:   info.Status == SYMBOL_STATUS_TRADING,
@@ -159,19 +159,19 @@ func (info SpotExchangeSymbol) ToPair() (cex.Pair, error) {
 	return pair, nil
 }
 
-func GetSpotPairs() (pairs []cex.Pair, err error) {
+func GetSpotSymbols() (symbols []cex.Symbol, err error) {
 	exchangeInfo, err := GetSpotExchangeInfo(ParamsSpotExchangeInfo{})
 	if err != nil {
 		return nil, err
 	}
 	for _, symbol := range exchangeInfo.Symbols {
-		pair, err := symbol.ToPair()
+		s, err := symbol.ToSymbol()
 		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, pair)
+		symbols = append(symbols, s)
 	}
-	return pairs, nil
+	return
 }
 
 type RateLimier struct {

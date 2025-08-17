@@ -20,17 +20,18 @@ func GetCMExchangeInfo() (exchangeInfo FuturesExchangeInfo, err error) {
 	return resp.Data, err
 }
 
-func GetCMPairs() (pairs []cex.Pair, err error) {
+func GetCMSymbols() (symbols []cex.Symbol, err error) {
 	exchangeInfo, err := GetCMExchangeInfo()
 	if err != nil {
 		return nil, err
 	}
 	for _, symbol := range exchangeInfo.Symbols {
-		pair, err := symbol.ToPair()
+		s, err := symbol.ToSymbol()
 		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, pair)
+		s.Type = cex.SYMBOL_TYPE_CM_FUTURES
+		symbols = append(symbols, s)
 	}
-	return pairs, nil
+	return
 }
