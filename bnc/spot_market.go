@@ -24,9 +24,9 @@ type RawOrderBook struct {
 
 type OrderBook struct {
 	// Common
-	LastUpdateID int64       `json:"lastUpdateId"`
-	Bids         ob.Book     `json:"bids"`
-	Asks         ob.Book     `json:"asks"`
+	LastUpdateID int64   `json:"lastUpdateId"`
+	Bids         ob.Book `json:"bids"`
+	Asks         ob.Book `json:"asks"`
 
 	// Futures
 	EventTime       int64 `json:"E"`
@@ -249,11 +249,11 @@ func (k Kline) NumberOfTrades() int64 {
 	return int64(k[8])
 }
 
-func (k Kline) TakerBuyBaseAssetVolume() float64 {
+func (k Kline) BaseAssetTakerBuyVolume() float64 {
 	return k[9]
 }
 
-func (k Kline) TakerBuyQuoteAssetVolume() float64 {
+func (k Kline) QuoteAssetTakerBuyVolume() float64 {
 	return k[10]
 }
 

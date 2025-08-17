@@ -184,23 +184,39 @@ type WsTradeStream struct {
 }
 
 type WsKline struct {
-	StartTime             int64         `json:"t"`
-	CloseTime             int64         `json:"T"`
-	Symbol                string        `json:"s"`
-	Interval              KlineInterval `json:"i"`
-	FirstTradeId          int64         `json:"f"`
-	LastTradeId           int64         `json:"L"`
-	OpenPrice             float64       `json:"o,string"`
-	ClosePrice            float64       `json:"c,string"`
-	HighPrice             float64       `json:"h,string"`
-	LowPrice              float64       `json:"l,string"`
-	BaseAssetVolume       float64       `json:"v,string"`
-	TradesNum             int64         `json:"n"`
-	IsKlineClosed         bool          `json:"x"`
-	QuoteVolume           float64       `json:"q,string"`
-	BaseAssetTakerVolume  float64       `json:"V,string"`
-	QuoteAssetTakerVolume float64       `json:"Q,string"`
-	B                     string        `json:"B"` // ignore
+	StartTime                int64         `json:"t"`
+	CloseTime                int64         `json:"T"`
+	Symbol                   string        `json:"s"`
+	Interval                 KlineInterval `json:"i"`
+	FirstTradeId             int64         `json:"f"`
+	LastTradeId              int64         `json:"L"`
+	OpenPrice                float64       `json:"o,string"`
+	ClosePrice               float64       `json:"c,string"`
+	HighPrice                float64       `json:"h,string"`
+	LowPrice                 float64       `json:"l,string"`
+	BaseAssetVolume          float64       `json:"v,string"`
+	TradesNum                int64         `json:"n"`
+	IsKlineClosed            bool          `json:"x"`
+	QuoteVolume              float64       `json:"q,string"`
+	BaseAssetTakerBuyVolume  float64       `json:"V,string"`
+	QuoteAssetTakerBuyVolume float64       `json:"Q,string"`
+	B                        string        `json:"B"` // ignore
+}
+
+func (wk WsKline) ToKline() Kline {
+	return Kline{
+		float64(wk.StartTime),
+		float64(wk.OpenPrice),
+		float64(wk.HighPrice),
+		float64(wk.LowPrice),
+		float64(wk.ClosePrice),
+		float64(wk.BaseAssetVolume),
+		float64(wk.CloseTime),
+		float64(wk.QuoteVolume),
+		float64(wk.TradesNum),
+		float64(wk.BaseAssetTakerBuyVolume),
+		float64(wk.QuoteAssetTakerBuyVolume),
+	}
 }
 
 type WsKlineStream struct {
