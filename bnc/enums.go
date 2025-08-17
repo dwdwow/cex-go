@@ -213,6 +213,19 @@ const (
 	CONTRACT_TYPE_PERPETUAL_DELIVERING ContractType = "PERPETUAL_DELIVERING"
 )
 
+type ContractStatus string
+
+const (
+	CONTRACT_STATUS_PENDING_TRADING ContractStatus = "PENDING_TRADING"
+	CONTRACT_STATUS_TRADING         ContractStatus = "TRADING"
+	CONTRACT_STATUS_PRE_DELIVERING  ContractStatus = "PRE_DELIVERING"
+	CONTRACT_STATUS_DELIVERING      ContractStatus = "DELIVERING"
+	CONTRACT_STATUS_DELIVERED       ContractStatus = "DELIVERED"
+	CONTRACT_STATUS_PRE_SETTLE      ContractStatus = "PRE_SETTLE"
+	CONTRACT_STATUS_SETTLING        ContractStatus = "SETTLING"
+	CONTRACT_STATUS_CLOSE           ContractStatus = "CLOSE"
+)
+
 type PositionSide string
 
 const (

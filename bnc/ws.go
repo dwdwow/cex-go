@@ -99,7 +99,6 @@ func (w *RawWsClient) Start() error {
 		return err
 	}
 	go w.mainThreadStarter()
-	//w.chRestart <- struct{}{}
 	return nil
 }
 
@@ -130,6 +129,17 @@ func (w *RawWsClient) mainThreadStarter() {
 		if err != nil {
 			w.logger.Error("Cannot Start", "err", err)
 			w.fan.Broadcast(RawWsClientMsg{nil, err})
+		}
+		w.muxStream.Lock()
+		stream := w.stream
+		w.stream = nil
+		w.muxStream.Unlock()
+		if len(stream) > 0 {
+			err = w.SubStream(stream...)
+			if err != nil {
+				w.logger.Error("Cannot Sub Stream", "err", err)
+				w.fan.Broadcast(RawWsClientMsg{nil, err})
+			}
 		}
 	}
 }
@@ -252,9 +262,6 @@ func (w *RawWsClient) SubStream(params ...string) error {
 	if len(oldStream)+len(params) > w.cfg.MaxStream {
 		return fmt.Errorf("bnc_ws: too many streams, max is %d", w.cfg.MaxStream)
 	}
-	// if !w.muxConn.TryLock() {
-	// 	return errors.New("bnc_ws: conn is busy")
-	// }
 
 	var err error
 	var data []byte
@@ -265,25 +272,13 @@ func (w *RawWsClient) SubStream(params ...string) error {
 			Params: params,
 			Id:     1,
 		})
-		// err = w.conn.WriteJSON(WsSubMsgInt64Id{
-		// 	Method: WsMethodSub,
-		// 	Params: params,
-		// 	Id:     1,
-		// })
 	} else {
 		data, err = json.Marshal(WsSubMsg{
 			Method: WsMethodSub,
 			Params: params,
 			Id:     "1",
 		})
-		// err = w.conn.WriteJSON(WsSubMsg{
-		// 	Method: WsMethodSub,
-		// 	Params: params,
-		// 	Id:     "1",
-		// })
 	}
-
-	// w.muxConn.Unlock()
 
 	if err != nil {
 		return err
