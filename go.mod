@@ -1,6 +1,6 @@
 module github.com/dwdwow/cex-go
 
-go 1.22.1
+go 1.25.0
 
 require (
 	github.com/dwdwow/props v0.0.7
