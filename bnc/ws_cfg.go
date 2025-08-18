@@ -6,8 +6,6 @@ import (
 	"github.com/dwdwow/cex-go"
 )
 
-const maxWsChCap = 10000
-
 var spotPublicWsCfg = WsCfg{
 	Url:             WsBaseUrl,
 	MaxStream:       1024,
