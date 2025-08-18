@@ -10,7 +10,7 @@ import (
 )
 
 func TestOrderbookClient(t *testing.T) {
-	clt := NewOrderBookClient(context.Background(), cex.SYMBOL_TYPE_UM_FUTURES, nil)
+	clt := newOrderBookBaseClient(context.Background(), cex.SYMBOL_TYPE_UM_FUTURES, nil)
 	unsubed, err := clt.SubSymbols(
 		"BTCUSDT",
 		"ETHUSDT",
@@ -32,27 +32,36 @@ func TestOrderbookClient(t *testing.T) {
 		"NEARUSDT",
 		"ALGOUSDT",
 		"FTMUSDT",
-		// empty
-		// "SANDUSDT",
-		// "MANAUSDT",
-		// "GALAUSDT",
-		// "APEUSDT",
-		// "AXSUSDT",
-		// "RUNEUSDT",
-		// "GMTUSDT",
-		// "EGLDUSDT",
-		// "THETAUSDT",
-		// "HBARUSDT",
-		// "XTZUSDT",
-		// "ZILUSDT",
-		// "VETUSDT",
-		// "ICPUSDT",
-		// "AAVEUSDT",
-		// "EOSUSDT",
-		// "MKRUSDT",
-		// "CAKEUSDT",
-		// "XMRUSDT",
-		// "FLOWUSDT",
+		"AAVEUSDT",
+		"EOSUSDT",
+		"FILUSDT",
+		"VETUSDT",
+		"XLMUSDT",
+		"ICPUSDT",
+		"SANDUSDT",
+		"MANAUSDT",
+		"AXSUSDT",
+		"RUNEUSDT",
+		"APTUSDT",
+		"LDOUSDT",
+		"OPUSDT",
+		"GMTUSDT",
+		"GALAUSDT",
+		"CHZUSDT",
+		"THETAUSDT",
+		"SNXUSDT",
+		"APEUSDT",
+		"GRTUSDT",
+		"HBARUSDT",
+		"XTZUSDT",
+		"ZILUSDT",
+		"FLOWUSDT",
+		"QNTUSDT",
+		"ENJUSDT",
+		"MKRUSDT",
+		"LRCUSDT",
+		"ONEUSDT",
+		"COMPUSDT",
 	)
 
 	if err != nil {
@@ -63,7 +72,9 @@ func TestOrderbookClient(t *testing.T) {
 	ch3 := clt.NewCh("SOLUSDT")
 	go func() {
 		time.Sleep(time.Second * 10)
-		clt.RemoveCh(ch)
+		clt.UnsubSymbols("BTCUSDT")
+		time.Sleep(time.Second * 10)
+		clt.RemoveCh(ch2)
 	}()
 	go func() {
 		for {

@@ -28,6 +28,9 @@ type WsCfg struct {
 	// normally just for public websocket
 	MaxStream int
 
+	// channel capacity
+	ChCap int
+
 	// binance has incoming massage limitation
 	// ex. spot 5/s, futures 10/s
 	ReqDur       time.Duration
@@ -89,7 +92,7 @@ func NewRawWsClient(ctx context.Context, cfg WsCfg, logger *slog.Logger) *RawWsC
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
-	logger = logger.With("ws", "bnc_raw_ws", "url", cfg.Url)
+	logger = logger.With("bnc_raw_ws", cfg.Url)
 	var user *User
 	if cfg.APIKey != "" && cfg.APISecretKey != "" {
 		user = NewUser(UserCfg{
@@ -97,12 +100,17 @@ func NewRawWsClient(ctx context.Context, cfg WsCfg, logger *slog.Logger) *RawWsC
 			APISecretKey: cfg.APISecretKey,
 		})
 	}
+	fan := props.NewFanout(
+		props.WithFanoutDur[RawWsClientMsg](time.Second),
+		props.WithFanoutLogger[RawWsClientMsg](logger),
+		props.WithFanoutChCap[RawWsClientMsg](cfg.ChCap),
+	)
 	return &RawWsClient{
 		ctx:          ctx,
 		ctxCancel:    cancel,
 		cfg:          cfg,
 		user:         user,
-		fan:          props.NewFanout(props.WithFanoutDur[RawWsClientMsg](time.Second)),
+		fan:          fan,
 		latestTokens: make([]int64, cfg.MaxReqPerDur),
 		reqId:        1000,
 		logger:       logger,
