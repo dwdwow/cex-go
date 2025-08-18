@@ -16,32 +16,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type WsDataUnmarshaler func(e WsEvent, isArray bool, data []byte) (any, error)
-
-type WsCfg struct {
-	// ws url without streams and auth tokens
-	Url          string
-	ListenKeyUrl string
-
-	// max stream per websocket client
-	// ex. spot 1024, portfolio margin / futures 200
-	// normally just for public websocket
-	MaxStream int
-
-	// channel capacity
-	ChCap int
-
-	// binance has incoming massage limitation
-	// ex. spot 5/s, futures 10/s
-	ReqDur       time.Duration
-	MaxReqPerDur int
-
-	APIKey       string
-	APISecretKey string
-
-	DataUnmarshaler WsDataUnmarshaler
-}
-
 type RawWsClientMsg struct {
 	Data []byte `json:"data"`
 	Err  error  `json:"err"`
@@ -286,10 +260,10 @@ func (w *RawWsClient) connListener(conn *websocket.Conn) {
 func (w *RawWsClient) write(data []byte) error {
 	// cannot read and write concurrently
 	if w.conn == nil {
-		return errors.New("bnc_ws: nil conn")
+		return errors.New("bnc: nil conn")
 	}
 	if !w.canWriteMsg() {
-		return errors.New("bnc_ws: too frequent write")
+		return errors.New("bnc: too frequent write")
 	}
 	return w.conn.WriteMessage(websocket.TextMessage, data)
 }
@@ -297,7 +271,7 @@ func (w *RawWsClient) write(data []byte) error {
 func (w *RawWsClient) read() (msgType int, data []byte, err error) {
 	// cannot read and write concurrently
 	if w.conn == nil {
-		return -1, nil, errors.New("bnc_ws: nil conn")
+		return -1, nil, errors.New("bnc: nil conn")
 	}
 	return w.conn.ReadMessage()
 }
@@ -1223,89 +1197,4 @@ func (w *WsClient) SubAllMarketLiquidationOrderStream() (result RawWsSubStreamRe
 func (w *WsClient) SubAllMarketLiquidationOrder() *WsClientSubscription[WsLiquidationOrderStream] {
 	event := "!forceOrder@arr"
 	return newWsClientSubscription[WsLiquidationOrderStream](w, event)
-}
-
-func unmarshal[T any](data []byte) (t T, err error) {
-	err = json.Unmarshal(data, &t)
-	return
-}
-
-func SpotWsPrivateMsgUnmarshaler(e WsEvent, _ bool, data []byte) (any, error) {
-	switch e {
-	case WsEventOutboundAccountPosition:
-		return unmarshal[WsSpotAccountUpdate](data)
-	case WsEventBalanceUpdate:
-		return unmarshal[WsSpotBalanceUpdate](data)
-	case WsEventExecutionReport:
-		return unmarshal[WsOrderExecutionReport](data)
-	case WsEventListStatus:
-		return unmarshal[WsSpotListStatus](data)
-	case WsEventListenKeyExpired:
-		return unmarshal[WsListenKeyExpired](data)
-	default:
-		return nil, fmt.Errorf("bnc: unknown event %v", e)
-	}
-}
-
-func SpotWsPublicMsgUnmarshaler(e WsEvent, _ bool, data []byte) (any, error) {
-	switch e {
-	case WsEventAggTrade:
-		return unmarshal[WsAggTradeStream](data)
-	case WsEventTrade:
-		return unmarshal[WsTradeStream](data)
-	case WsEventKline:
-		return unmarshal[WsKlineStream](data)
-	case WsEventDepthUpdate:
-		return unmarshal[WsDepthStream](data)
-	default:
-		return nil, fmt.Errorf("bnc: unknown event %v", e)
-	}
-}
-
-func UmFuturesWsPublicMsgUnmarshaler(e WsEvent, isArray bool, data []byte) (any, error) {
-	switch e {
-	case WsEventAggTrade:
-		return unmarshal[WsAggTradeStream](data)
-	case WsEventMarkPriceUpdate:
-		if isArray {
-			return unmarshal[[]WsMarkPriceStream](data)
-		}
-		return unmarshal[WsMarkPriceStream](data)
-	case WsEventForceOrder:
-		if isArray {
-			return unmarshal[[]WsLiquidationOrderStream](data)
-		}
-		return unmarshal[WsLiquidationOrderStream](data)
-	case WsEventKline:
-		return unmarshal[WsKlineStream](data)
-	case WsEventDepthUpdate:
-		return unmarshal[WsDepthStream](data)
-	default:
-		return nil, fmt.Errorf("bnc: unknown event %v", e)
-	}
-}
-
-func CmFuturesWsPublicMsgUnmarshaler(e WsEvent, isArray bool, data []byte) (any, error) {
-	switch e {
-	case WsEventAggTrade:
-		return unmarshal[WsAggTradeStream](data)
-	case WsEventIndexPriceUpdate:
-		return unmarshal[WsCMIndexPriceStream](data)
-	case WsEventMarkPriceUpdate:
-		if isArray {
-			return unmarshal[[]WsMarkPriceStream](data)
-		}
-		return unmarshal[WsMarkPriceStream](data)
-	case WsEventForceOrder:
-		if isArray {
-			return unmarshal[[]WsLiquidationOrderStream](data)
-		}
-		return unmarshal[WsLiquidationOrderStream](data)
-	case WsEventKline:
-		return unmarshal[WsKlineStream](data)
-	case WsEventDepthUpdate:
-		return unmarshal[WsDepthStream](data)
-	default:
-		return nil, fmt.Errorf("bnc: unknown event %v", e)
-	}
 }

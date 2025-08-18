@@ -39,26 +39,26 @@ func NewOrderBookClient(ctx context.Context, logger *slog.Logger) *OrderBookClie
 	}
 }
 
-func (oc *OrderBookClient) SubSymbols(symbolType cex.SymbolType, symbols ...string) (unsubed []string, err error) {
+func (oc *OrderBookClient) Sub(symbolType cex.SymbolType, symbols ...string) (unsubed []string, err error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
-		return oc.spClt.SubSymbols(symbols...)
+		return oc.spClt.subSymbols(symbols...)
 	case cex.SYMBOL_TYPE_UM_FUTURES:
-		return oc.umClt.SubSymbols(symbols...)
+		return oc.umClt.subSymbols(symbols...)
 	case cex.SYMBOL_TYPE_CM_FUTURES:
-		return oc.cmClt.SubSymbols(symbols...)
+		return oc.cmClt.subSymbols(symbols...)
 	}
 	return nil, errors.New("bnc: unknown symbol type")
 }
 
-func (oc *OrderBookClient) UnsubSymbols(symbolType cex.SymbolType, symbols ...string) (err error) {
+func (oc *OrderBookClient) Unsub(symbolType cex.SymbolType, symbols ...string) (err error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
-		return oc.spClt.UnsubSymbols(symbols...)
+		return oc.spClt.unsubSymbols(symbols...)
 	case cex.SYMBOL_TYPE_UM_FUTURES:
-		return oc.umClt.UnsubSymbols(symbols...)
+		return oc.umClt.unsubSymbols(symbols...)
 	case cex.SYMBOL_TYPE_CM_FUTURES:
-		return oc.cmClt.UnsubSymbols(symbols...)
+		return oc.cmClt.unsubSymbols(symbols...)
 	}
 	return errors.New("bnc: unknown symbol type")
 }
@@ -66,24 +66,19 @@ func (oc *OrderBookClient) UnsubSymbols(symbolType cex.SymbolType, symbols ...st
 func (oc *OrderBookClient) NewCh(symbolType cex.SymbolType, symbol string) (ch <-chan ob.Data, err error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
-		return oc.spClt.NewCh(symbol)
+		return oc.spClt.newCh(symbol)
 	case cex.SYMBOL_TYPE_UM_FUTURES:
-		return oc.umClt.NewCh(symbol)
+		return oc.umClt.newCh(symbol)
 	case cex.SYMBOL_TYPE_CM_FUTURES:
-		return oc.cmClt.NewCh(symbol)
+		return oc.cmClt.newCh(symbol)
 	}
 	return nil, errors.New("bnc: unknown symbol type")
 }
 
-func (oc *OrderBookClient) RemoveCh(symbolType cex.SymbolType, ch <-chan ob.Data) {
-	switch symbolType {
-	case cex.SYMBOL_TYPE_SPOT:
-		oc.spClt.RemoveCh(ch)
-	case cex.SYMBOL_TYPE_UM_FUTURES:
-		oc.umClt.RemoveCh(ch)
-	case cex.SYMBOL_TYPE_CM_FUTURES:
-		oc.cmClt.RemoveCh(ch)
-	}
+func (oc *OrderBookClient) RemoveCh(ch <-chan ob.Data) {
+	oc.spClt.removeCh(ch)
+	oc.umClt.removeCh(ch)
+	oc.cmClt.removeCh(ch)
 }
 
 type orderBookMergedClient struct {
@@ -126,7 +121,7 @@ func (oc *orderBookMergedClient) scanAllSymbols() {
 	}
 }
 
-func (oc *orderBookMergedClient) SubSymbols(symbols ...string) (unsubed []string, err error) {
+func (oc *orderBookMergedClient) subSymbols(symbols ...string) (unsubed []string, err error) {
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
 	defer oc.scanAllSymbols()
@@ -139,7 +134,7 @@ func (oc *orderBookMergedClient) SubSymbols(symbols ...string) (unsubed []string
 		if len(unsubed) == 0 {
 			return
 		}
-		unsubed, err = clt.SubSymbols(unsubed...)
+		unsubed, err = clt.subSymbols(unsubed...)
 		if err != nil && err != ErrNotAllStreamSubed {
 			oc.logger.Error("bnc: sub symbols failed", "err", err)
 			return
@@ -150,7 +145,7 @@ func (oc *orderBookMergedClient) SubSymbols(symbols ...string) (unsubed []string
 			return
 		}
 		clt := newOrderBookBaseClient(oc.ctx, oc.symbolType, oc.logger)
-		unsubed, err = clt.SubSymbols(unsubed...)
+		unsubed, err = clt.subSymbols(unsubed...)
 		if err != nil && err != ErrNotAllStreamSubed {
 			oc.logger.Error("bnc: sub symbols failed", "err", err)
 			return
@@ -159,14 +154,14 @@ func (oc *orderBookMergedClient) SubSymbols(symbols ...string) (unsubed []string
 	}
 }
 
-func (oc *orderBookMergedClient) UnsubSymbols(symbols ...string) (err error) {
+func (oc *orderBookMergedClient) unsubSymbols(symbols ...string) (err error) {
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
 	defer oc.scanAllSymbols()
 	for _, s := range symbols {
 		clt, ok := oc.sybs.GetVWithOk(s)
 		if ok {
-			err = clt.UnsubSymbols(s)
+			err = clt.unsubSymbols(s)
 			if err != nil {
 				return
 			}
@@ -175,20 +170,20 @@ func (oc *orderBookMergedClient) UnsubSymbols(symbols ...string) (err error) {
 	return nil
 }
 
-// NewCh will return a channel that will receive the ob data
+// newCh will return a channel that will receive the ob data
 // if symbol is not found, ok will be false,
 // should subscribe the symbol first
-func (oc *orderBookMergedClient) NewCh(symbol string) (ch <-chan ob.Data, err error) {
+func (oc *orderBookMergedClient) newCh(symbol string) (ch <-chan ob.Data, err error) {
 	clt, ok := oc.sybs.GetVWithOk(symbol)
 	if !ok {
 		return nil, errors.New("bnc: symbol not found")
 	}
-	return clt.NewCh(symbol), nil
+	return clt.newCh(symbol), nil
 }
 
-func (oc *orderBookMergedClient) RemoveCh(ch <-chan ob.Data) {
+func (oc *orderBookMergedClient) removeCh(ch <-chan ob.Data) {
 	for _, clt := range oc.clts {
-		clt.RemoveCh(ch)
+		clt.removeCh(ch)
 	}
 }
 
@@ -236,7 +231,7 @@ func newOrderBookBaseClient(ctx context.Context, symbolType cex.SymbolType, logg
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
-	logger = logger.With("bnc_ob_clt", symbolType)
+	logger = logger.With("bnc_ob_base_clt", symbolType)
 	wsCfg := DefaultPublicWsCfg(symbolType)
 	wsCfg.MaxStream = maxObWsStream
 	ws := NewRawWsClient(ctx, wsCfg, logger)
@@ -264,10 +259,6 @@ func newOrderBookBaseClient(ctx context.Context, symbolType cex.SymbolType, logg
 	return clt
 }
 
-func (oc *orderBookBaseClient) SymbolType() cex.SymbolType {
-	return oc.sybType
-}
-
 func (oc *orderBookBaseClient) symbolType() cex.SymbolType {
 	return oc.sybType
 }
@@ -284,23 +275,23 @@ func (oc *orderBookBaseClient) ods() *props.SafeRWMap[string, ob.Data] {
 	return oc._ods
 }
 
-// SubSymbols will subscribe to new symbols
+// subSymbols will subscribe to new symbols
 // symbol is case insensitive
-func (oc *orderBookBaseClient) SubSymbols(symbols ...string) (unsubed []string, err error) {
+func (oc *orderBookBaseClient) subSymbols(symbols ...string) (unsubed []string, err error) {
 	return oc.sub(symbols...)
 }
 
-func (oc *orderBookBaseClient) UnsubSymbols(symbols ...string) (err error) {
+func (oc *orderBookBaseClient) unsubSymbols(symbols ...string) (err error) {
 	return oc.unsub(symbols...)
 }
 
-// NewCh will return a channel that will receive the ob data
+// newCh will return a channel that will receive the ob data
 // symbol is case insensitive
-func (oc *orderBookBaseClient) NewCh(symbol string) <-chan ob.Data {
+func (oc *orderBookBaseClient) newCh(symbol string) <-chan ob.Data {
 	return oc.radio.Sub(symbol)
 }
 
-func (oc *orderBookBaseClient) RemoveCh(ch <-chan ob.Data) {
+func (oc *orderBookBaseClient) removeCh(ch <-chan ob.Data) {
 	oc.radio.UnsubAll(ch)
 }
 
@@ -342,7 +333,10 @@ func (oc *orderBookBaseClient) unsub(symbols ...string) (err error) {
 	if err != nil {
 		return err
 	}
-	oc.workers.DeleteMany(symbols)
+	closedWorkers := oc.workers.DeleteMany(symbols)
+	for _, ch := range closedWorkers {
+		close(ch)
+	}
 	// if delete cache data, may create some problems
 	// for _, symbol := range symbols {
 	// 	oc._exist.Delete(symbol)
@@ -408,11 +402,14 @@ func (oc *orderBookBaseClient) worker(ch chan WsDepthMsg) {
 			if !ok {
 				return
 			}
-			ob := oc.update(data)
-			if ob.Err == ErrCachingObDepthUpdate {
-				continue
+			ob, updated := oc.update(data)
+			if updated {
+				oc.radio.Broadcast(data.Symbol, ob)
+			} else {
+				if ob.Err == ErrCachingObDepthUpdate {
+					continue
+				}
 			}
-			oc.radio.Broadcast(data.Symbol, ob)
 		case <-oc.ctx.Done():
 			return
 		}
@@ -448,21 +445,33 @@ func (oc *orderBookBaseClient) broadcastObs(obs []ob.Data) {
 	}
 }
 
-func (oc *orderBookBaseClient) update(depthData WsDepthMsg) ob.Data {
+var ErrCachingObDepthUpdate = errors.New("bnc: caching ob depth update")
+var ErrObQueryLimit = errors.New("bnc: ob query limit")
+var ErrObDepthUpdateCacheTooLarge = errors.New("bnc: depth update cache too large")
+
+func (oc *orderBookBaseClient) update(depthData WsDepthMsg) (od ob.Data, updated bool) {
 	symbol := depthData.Symbol
 	err := oc.cacheRawData(depthData)
 	if err != nil {
-		return oc.setError(symbol, err)
+		return oc.setError(symbol, err), true
 	}
 	if oc.needQueryOb(symbol) {
+		// check cache
+		oldCache := oc._cache.GetV(symbol)
+		if len(oldCache) < 10 {
+			return oc.setError(symbol, ErrCachingObDepthUpdate), false
+		}
+		if !publicRestLimitter.TryWait() {
+			return oc.setError(symbol, ErrObQueryLimit), true
+		}
 		err = oc.queryOb(symbol)
 		if err != nil {
-			return oc.setError(symbol, err)
+			return oc.setError(symbol, err), true
 		}
 	}
-	o := oc.obUpdater(oc, depthData)
-	oc._ods.SetKV(symbol, o)
-	return o
+	od = oc.obUpdater(oc, depthData)
+	oc._ods.SetKV(symbol, od)
+	return od, true
 }
 
 func (oc *orderBookBaseClient) setError(symbol string, err error) ob.Data {
@@ -475,9 +484,9 @@ func (oc *orderBookBaseClient) setError(symbol string, err error) ob.Data {
 func (oc *orderBookBaseClient) cacheRawData(depthData WsDepthMsg) error {
 	symbol := depthData.Symbol
 	oldCache := oc._cache.GetV(symbol)
-	if len(oldCache) > 100 {
+	if len(oldCache) > 1000 {
 		oc._cache.SetKV(symbol, nil)
-		return errors.New("bnc: too many ob depth data cache")
+		return ErrObDepthUpdateCacheTooLarge
 	}
 	newCache := append(oldCache, depthData)
 	// spot update data ids are continuous
@@ -518,16 +527,14 @@ func (oc *orderBookBaseClient) needQueryOb(symbol string) bool {
 	return !ok || obData.Empty()
 }
 
-var ErrCachingObDepthUpdate = errors.New("bnc: caching ob depth update")
-
 func (oc *orderBookBaseClient) queryOb(symbol string) error {
-	oldCache := oc._cache.GetV(symbol)
-	if len(oldCache) < 10 {
-		return ErrCachingObDepthUpdate
-	}
-	if time.Now().UnixMilli()-lastObQueryFailTsMilli.Get() < 3000 {
-		return errors.New("bnc: can not query orderbook within 3000 milliseconds")
-	}
+	// oldCache := oc._cache.GetV(symbol)
+	// if len(oldCache) < 10 {
+	// 	return ErrCachingObDepthUpdate
+	// }
+	// if time.Now().UnixMilli()-lastObQueryFailTsMilli.Get() < 3000 {
+	// 	return errors.New("bnc: can not query orderbook within 3000 milliseconds")
+	// }
 	if oc._exist.SetKV(symbol, true) {
 		return errors.New("bnc: lock to query orderbook")
 	}
@@ -539,7 +546,7 @@ func (oc *orderBookBaseClient) queryOb(symbol string) error {
 		Limit:  1000,
 	})
 	if err != nil {
-		lastObQueryFailTsMilli.Set(time.Now().UnixMilli())
+		// lastObQueryFailTsMilli.Set(time.Now().UnixMilli())
 		return err
 	}
 	obData := ob.Data{
