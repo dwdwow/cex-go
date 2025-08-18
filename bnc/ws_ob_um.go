@@ -1,10 +1,12 @@
 package bnc
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,89 +15,147 @@ import (
 	"github.com/dwdwow/cex-go"
 	"github.com/dwdwow/cex-go/ob"
 	"github.com/dwdwow/props"
-	"github.com/dwdwow/ws/wsclt"
-	"github.com/gorilla/websocket"
 )
 
-type WsUMObMsgHandler struct {
-	mgClt            *wsclt.MergedClient
-	svDataCacheBySyb props.SafeRWMap[string, []WsDepthMsg]
-	gettingObSybs    props.SafeRWMap[string, bool]
-	obCacheBySyb     props.SafeRWMap[string, ob.Data]
+type UmObWs struct {
+	ctx context.Context
+
+	ws *RawWsClient
+
+	cache *props.SafeRWMap[string, []WsDepthMsg]
+	exist *props.SafeRWMap[string, bool]
+	ods   *props.SafeRWMap[string, ob.Data]
+
+	rawSuber <-chan RawWsClientMsg
+
+	radio *props.Radio[ob.Data]
+
+	logger *slog.Logger
 }
 
-func NewWsUMObMsgHandler(logger *slog.Logger) *WsUMObMsgHandler {
-	mgClt := wsclt.
-		NewMergedClient(FutureWsBaseUrl, true, maxTopicNumPerWs, logger).
-		SetTopicSuber(topicSuber).
-		SetTopicUnsuber(topicUnsuber).
-		SetPong(pong)
-	return &WsUMObMsgHandler{
-		mgClt: mgClt,
+func NewUmObWs(ctx context.Context, logger *slog.Logger) *UmObWs {
+	if ctx == nil {
+		ctx = context.Background()
 	}
-}
-
-func (w *WsUMObMsgHandler) Name() cex.CexName {
-	return cex.BINANCE
-}
-
-func (w *WsUMObMsgHandler) Type() cex.SymbolType {
-	return cex.SYMBOL_TYPE_UM_FUTURES
-}
-
-func (w *WsUMObMsgHandler) Client() *wsclt.MergedClient {
-	return w.mgClt
-}
-
-func (w *WsUMObMsgHandler) Topics(symbols ...string) []string {
-	var topics []string
-	for _, s := range symbols {
-		topics = append(topics, CreateObTopic(s))
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
-	return topics
+	logger = logger.With("ws", "bnc_um_ob")
+	cfg := DefaultUmPublicWsCfg()
+	cfg.MaxStream = maxObWsStream
+	ws := NewRawWsClient(ctx, cfg, logger)
+	clt := &UmObWs{
+		ctx:      ctx,
+		ws:       ws,
+		rawSuber: ws.Sub(),
+		cache:    props.NewSafeRWMap[string, []WsDepthMsg](),
+		exist:    props.NewSafeRWMap[string, bool](),
+		ods:      props.NewSafeRWMap[string, ob.Data](),
+		radio:    props.NewRadio(props.WithFanoutDur[ob.Data](time.Second)),
+		logger:   logger,
+	}
+	clt.run()
+	return clt
 }
 
-func (w *WsUMObMsgHandler) Handle(msg wsclt.MergedClientMsg) ([]ob.Data, error) {
-	return w.handle(msg)
+// SubNewSymbols will subscribe to new symbols
+// symbol is case insensitive
+func (w *UmObWs) SubNewSymbols(symbols ...string) (unsubed []string, err error) {
+	return w.sub(symbols...)
 }
 
-func (w *WsUMObMsgHandler) handle(msg wsclt.MergedClientMsg) ([]ob.Data, error) {
-	if msg.Err != nil {
-		// set ob data to empty
-		var obs []ob.Data
-		topics := msg.Client.Topics()
-		for _, topic := range topics {
-			topicSplit := strings.Split(topic, "@depth")
-			if len(topicSplit) != 2 {
-				// should not get here
-				fmt.Println("bnc: unexpected error: binance future ob ws msg handle: can not parse topic", topic)
-				continue
+// NewCh will return a channel that will receive the ob data
+// symbol is case insensitive
+func (w *UmObWs) NewCh(symbol string) <-chan ob.Data {
+	return w.radio.Sub(symbol)
+}
+
+func (w *UmObWs) RemoveCh(ch <-chan ob.Data) {
+	w.radio.UnsubAll(ch)
+}
+
+func (w *UmObWs) run() {
+	go w.listener()
+}
+
+func (w *UmObWs) listener() {
+	for {
+		select {
+		case msg := <-w.rawSuber:
+			obs := w.handle(msg)
+			if len(obs) > 0 {
+				for _, o := range obs {
+					if o.Err == ErrCachingObDepthUpdate {
+						continue
+					}
+					w.radio.Broadcast(o.Symbol, o)
+				}
 			}
-			symbol := topicSplit[0]
-			empty := ob.NewData(cex.BINANCE, cex.SYMBOL_TYPE_UM_FUTURES, symbol)
-			empty.SetErr(msg.Err)
-			w.obCacheBySyb.SetKV(symbol, empty)
-			obs = append(obs, empty)
+		case <-w.ctx.Done():
+			return
 		}
-		return obs, nil
 	}
-	if msg.MsgType != websocket.TextMessage {
-		return nil, fmt.Errorf("bnc: ws receive unknown msg type %v", msg.MsgType)
-	}
-	msgData := msg.Data
-	data := new(WsDepthMsg)
-	err := json.Unmarshal(msgData, data)
-	if err != nil {
-		return nil, fmt.Errorf("bnc: ws msg unmarshal, msg: %v, %w", string(msgData), err)
-	}
-	if data.EventType == WsEDepthUpdate {
-		obData := w.update(*data)
-		return []ob.Data{obData}, nil
-	}
-	return nil, nil
 }
 
-func (w *WsUMObMsgHandler) update(depthData WsDepthMsg) ob.Data {
+func (w *UmObWs) sub(symbols ...string) (unsubed []string, err error) {
+	var params []string
+	for _, symbol := range symbols {
+		params = append(params, strings.ToLower(symbol)+"@depth")
+	}
+	res, err := w.ws.SubStream(params...)
+	if err == nil {
+		return
+	}
+	for _, p := range res.UnsubedParams {
+		for _, s := range symbols {
+			if strings.Contains(p, strings.ToLower(s)) {
+				unsubed = append(unsubed, s)
+			}
+		}
+	}
+	return unsubed, err
+}
+
+func (w *UmObWs) handle(msg RawWsClientMsg) []ob.Data {
+	data := msg.Data
+	err := msg.Err
+	if err != nil {
+		// set ob data to empty
+		obs := w.makeAllEmptyObs(err)
+		return obs
+	}
+	m := new(WsDepthMsg)
+	err = json.Unmarshal(data, m)
+	if err != nil {
+		obs := w.makeAllEmptyObs(err)
+		return obs
+	}
+	if m.EventType == WsEDepthUpdate {
+		obData := w.update(*m)
+		return []ob.Data{obData}
+	}
+	if string(data) == "{\"result\":null,\"id\":\"1\"}" ||
+		string(data) == "{\"result\":null,\"id\":1}" {
+		// this means subscribe success
+		return nil
+	}
+	w.logger.Warn("bnc: unexpected ob ws msg, unknown event type", "msg", string(data))
+	return nil
+}
+
+func (w *UmObWs) makeAllEmptyObs(err error) []ob.Data {
+	symbols := w.exist.Keys()
+	var obs []ob.Data
+	for _, symbol := range symbols {
+		empty := ob.NewData(cex.BINANCE, cex.SYMBOL_TYPE_UM_FUTURES, symbol)
+		empty.SetErr(err)
+		w.ods.SetKV(symbol, empty)
+		obs = append(obs, empty)
+	}
+	return obs
+}
+
+func (w *UmObWs) update(depthData WsDepthMsg) ob.Data {
 	symbol := depthData.Symbol
 	err := w.cacheRawData(depthData)
 	if err != nil {
@@ -108,23 +168,23 @@ func (w *WsUMObMsgHandler) update(depthData WsDepthMsg) ob.Data {
 		}
 	}
 	o := w.updateOb(depthData)
-	w.obCacheBySyb.SetKV(symbol, o)
+	w.ods.SetKV(symbol, o)
 	return o
 }
 
-func (w *WsUMObMsgHandler) setError(symbol string, err error) ob.Data {
+func (w *UmObWs) setError(symbol string, err error) ob.Data {
 	empty := ob.NewData(cex.BINANCE, cex.SYMBOL_TYPE_UM_FUTURES, symbol)
 	empty.SetErr(err)
-	w.obCacheBySyb.SetKV(symbol, empty)
+	w.ods.SetKV(symbol, empty)
 	return empty
 }
 
-func (w *WsUMObMsgHandler) cacheRawData(depthData WsDepthMsg) error {
+func (w *UmObWs) cacheRawData(depthData WsDepthMsg) error {
 	symbol := depthData.Symbol
-	oldCache := w.svDataCacheBySyb.GetV(symbol)
+	oldCache := w.cache.GetV(symbol)
 	if len(oldCache) > 100 {
 		// clear cache
-		w.svDataCacheBySyb.SetKV(symbol, nil)
+		w.cache.SetKV(symbol, nil)
 		return errors.New("bnc: too many ob depth data cache")
 	}
 	newCache := append(oldCache, depthData)
@@ -136,31 +196,31 @@ func (w *WsUMObMsgHandler) cacheRawData(depthData WsDepthMsg) error {
 	cacheLen := len(newCache)
 	for i := 0; i < cacheLen-1; i++ {
 		if newCache[i].LastId != newCache[i+1].PLastId {
-			w.svDataCacheBySyb.SetKV(symbol, nil)
+			w.cache.SetKV(symbol, nil)
 			return errors.New("bnc: ob depth data cache is not continuous")
 		}
 	}
-	w.svDataCacheBySyb.SetKV(symbol, newCache)
+	w.cache.SetKV(symbol, newCache)
 	return nil
 }
 
-func (w *WsUMObMsgHandler) needQueryOb(symbol string) bool {
-	obData, ok := w.obCacheBySyb.GetVWithOk(symbol)
+func (w *UmObWs) needQueryOb(symbol string) bool {
+	obData, ok := w.ods.GetVWithOk(symbol)
 	return !ok || obData.Empty()
 }
 
-func (w *WsUMObMsgHandler) queryOb(symbol string) error {
-	oldCache := w.svDataCacheBySyb.GetV(symbol)
+func (w *UmObWs) queryOb(symbol string) error {
+	oldCache := w.cache.GetV(symbol)
 	if len(oldCache) < 10 {
 		return ErrCachingObDepthUpdate
 	}
 	if time.Now().UnixMilli()-lastObQueryFailTsMilli.Get() < 3000 {
 		return errors.New("bnc: can not query orderbook within 3000 milliseconds")
 	}
-	if w.gettingObSybs.SetKV(symbol, true) {
+	if w.exist.SetKV(symbol, true) {
 		return errors.New("bnc: lock to query orderbook")
 	}
-	defer w.gettingObSybs.SetKV(symbol, false)
+	defer w.exist.SetKV(symbol, false)
 	// because ws orderbook default limit is 1000
 	// so limit must be 1000
 	rawOrderbook, err := GetUMOrderBook(ParamsOrderBook{
@@ -180,15 +240,15 @@ func (w *WsUMObMsgHandler) queryOb(symbol string) error {
 		Asks:    rawOrderbook.Asks,
 		Bids:    rawOrderbook.Bids,
 	}
-	w.obCacheBySyb.SetKV(symbol, obData)
+	w.ods.SetKV(symbol, obData)
 	return nil
 }
 
-func (w *WsUMObMsgHandler) updateOb(depthData WsDepthMsg) ob.Data {
+func (w *UmObWs) updateOb(depthData WsDepthMsg) ob.Data {
 	symbol := depthData.Symbol
-	buffer := w.svDataCacheBySyb.GetV(symbol)
+	buffer := w.cache.GetV(symbol)
 	empty := ob.NewData(cex.BINANCE, cex.SYMBOL_TYPE_UM_FUTURES, symbol)
-	obData, ok := w.obCacheBySyb.GetVWithOk(symbol)
+	obData, ok := w.ods.GetVWithOk(symbol)
 	if !ok || obData.Empty() {
 		empty.SetErr(errors.New("bnc: unexpected error: binance update ob: if !ok || obData.Empty()"))
 		return empty
@@ -212,8 +272,8 @@ func (w *WsUMObMsgHandler) updateOb(depthData WsDepthMsg) ob.Data {
 			if pu == _id {
 				_id = lastId
 			} else {
-				safeMapObDataBuffer.SetKV(symbol, buffer[i:])
-				empty.SetErr(fmt.Errorf("pu != lastId, %v %v", _id, firstId))
+				w.cache.SetKV(symbol, buffer[i:])
+				empty.SetErr(fmt.Errorf("bnc: ob depth update is not continuous, websocket message may be blocked"))
 				return empty
 			}
 		} else {
@@ -273,9 +333,9 @@ func (w *WsUMObMsgHandler) updateOb(depthData WsDepthMsg) ob.Data {
 		}
 	}
 	if len(buffer) <= lastIndex+1 {
-		w.svDataCacheBySyb.SetKV(symbol, []WsDepthMsg{})
+		w.cache.SetKV(symbol, []WsDepthMsg{})
 	} else {
-		w.svDataCacheBySyb.SetKV(symbol, buffer[lastIndex+1:])
+		w.cache.SetKV(symbol, buffer[lastIndex+1:])
 	}
 	return obData
 }

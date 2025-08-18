@@ -1,8 +1,12 @@
 package bnc
 
-import "time"
+import (
+	"time"
 
-var SpotPublicWsCfg = WsCfg{
+	"github.com/dwdwow/cex-go"
+)
+
+var spotPublicWsCfg = WsCfg{
 	Url:             WsBaseUrl,
 	MaxStream:       1024,
 	ReqDur:          time.Second,
@@ -10,7 +14,11 @@ var SpotPublicWsCfg = WsCfg{
 	DataUnmarshaler: SpotWsPublicMsgUnmarshaler,
 }
 
-var SpotPrivateWsCfg = WsCfg{
+func DefaultSpotPublicWsCfg() WsCfg {
+	return spotPublicWsCfg
+}
+
+var spotPrivateWsCfg = WsCfg{
 	Url:             WsBaseUrl,
 	ListenKeyUrl:    API_ENDPOINT + API_V3 + "/userDataStream",
 	MaxStream:       1024,
@@ -19,7 +27,11 @@ var SpotPrivateWsCfg = WsCfg{
 	DataUnmarshaler: SpotWsPrivateMsgUnmarshaler,
 }
 
-var UmFuturesWsCfg = WsCfg{
+func DefaultSpotPrivateWsCfg() WsCfg {
+	return spotPrivateWsCfg
+}
+
+var umPublicWsCfg = WsCfg{
 	Url:             FutureWsBaseUrl,
 	MaxStream:       200,
 	ReqDur:          time.Second,
@@ -27,10 +39,30 @@ var UmFuturesWsCfg = WsCfg{
 	DataUnmarshaler: UmFuturesWsPublicMsgUnmarshaler,
 }
 
-var CmFuturesWsCfg = WsCfg{
+func DefaultUmPublicWsCfg() WsCfg {
+	return umPublicWsCfg
+}
+
+var cmPublicWsCfg = WsCfg{
 	Url:             CMFutureWsBaseUrl,
 	MaxStream:       200,
 	ReqDur:          time.Second,
 	MaxReqPerDur:    10,
 	DataUnmarshaler: CmFuturesWsPublicMsgUnmarshaler,
+}
+
+func DefaultCmPublicWsCfg() WsCfg {
+	return cmPublicWsCfg
+}
+
+func DefaultPublicWsCfg(symbolType cex.SymbolType) WsCfg {
+	switch symbolType {
+	case cex.SYMBOL_TYPE_SPOT:
+		return DefaultSpotPublicWsCfg()
+	case cex.SYMBOL_TYPE_UM_FUTURES:
+		return DefaultUmPublicWsCfg()
+	case cex.SYMBOL_TYPE_CM_FUTURES:
+		return DefaultCmPublicWsCfg()
+	}
+	panic("bnc: unknown symbol type")
 }

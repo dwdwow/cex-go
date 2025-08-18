@@ -5,34 +5,31 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/dwdwow/cex-go"
 )
 
-func TestOrderbookClient(t *testing.T) {
-	clt := NewOrderBookClient(context.Background(), cex.SYMBOL_TYPE_UM_FUTURES, nil)
-	unsubed, err := clt.SubSymbols(
+func TestUmObWs(t *testing.T) {
+	ws := NewUmObWs(context.TODO(), nil)
+	unsubed, err := ws.SubNewSymbols(
 		"BTCUSDT",
 		"ETHUSDT",
 		"SOLUSDT",
 		"DOGEUSDT",
 		"XRPUSDT",
 		"TRXUSDT",
-		"LTCUSDT",
-		"ADAUSDT",
-		"BNBUSDT",
-		"DOTUSDT",
-		"LINKUSDT",
-		"MATICUSDT",
-		"AVAXUSDT",
-		"SHIBUSDT",
-		"ATOMUSDT",
-		"UNIUSDT",
-		"ETCUSDT",
-		"NEARUSDT",
-		"ALGOUSDT",
-		"FTMUSDT",
-		// empty
+		// "LTCUSDT",
+		// "ADAUSDT",
+		// "BNBUSDT",
+		// "DOTUSDT",
+		// "LINKUSDT",
+		// "MATICUSDT",
+		// "AVAXUSDT",
+		// "SHIBUSDT",
+		// "ATOMUSDT",
+		// "UNIUSDT",
+		// "ETCUSDT",
+		// "NEARUSDT",
+		// "ALGOUSDT",
+		// "FTMUSDT",
 		// "SANDUSDT",
 		// "MANAUSDT",
 		// "GALAUSDT",
@@ -43,6 +40,7 @@ func TestOrderbookClient(t *testing.T) {
 		// "EGLDUSDT",
 		// "THETAUSDT",
 		// "HBARUSDT",
+		//
 		// "XTZUSDT",
 		// "ZILUSDT",
 		// "VETUSDT",
@@ -54,16 +52,15 @@ func TestOrderbookClient(t *testing.T) {
 		// "XMRUSDT",
 		// "FLOWUSDT",
 	)
-
 	if err != nil {
 		t.Fatal(err, unsubed)
 	}
-	ch := clt.NewCh("BTCUSDT")
-	ch2 := clt.NewCh("ETHUSDT")
-	ch3 := clt.NewCh("SOLUSDT")
+	ch := ws.NewCh("BTCUSDT")
+	ch2 := ws.NewCh("ETHUSDT")
+	ch3 := ws.NewCh("SOLUSDT")
 	go func() {
-		time.Sleep(time.Second * 10)
-		clt.RemoveCh(ch)
+		time.Sleep(time.Second * 30)
+		ws.RemoveCh(ch)
 	}()
 	go func() {
 		for {
@@ -76,7 +73,7 @@ func TestOrderbookClient(t *testing.T) {
 				fmt.Println(o.Err)
 				continue
 			}
-			fmt.Println(o.Type, o.Symbol, o.Asks[0])
+			fmt.Println(o.Symbol, o.Asks[0])
 		}
 	}()
 	go func() {
@@ -90,7 +87,7 @@ func TestOrderbookClient(t *testing.T) {
 				fmt.Println(o.Err)
 				continue
 			}
-			fmt.Println(o.Type, o.Symbol, o.Asks[0])
+			fmt.Println(o.Symbol, o.Asks[0])
 		}
 	}()
 	go func() {
@@ -104,7 +101,7 @@ func TestOrderbookClient(t *testing.T) {
 				fmt.Println(o.Err)
 				continue
 			}
-			fmt.Println(o.Type, o.Symbol, o.Asks[0])
+			fmt.Println(o.Symbol, o.Asks[0])
 		}
 	}()
 	select {}
