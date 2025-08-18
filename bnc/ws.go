@@ -639,6 +639,7 @@ func (w *WsClientSubscription[D]) Chan() <-chan WsClientSubscriptionMsg[D] {
 	return w.ch
 }
 
+// WsClient is a simple and lightweight websocket client for binance
 type WsClient struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -648,8 +649,7 @@ type WsClient struct {
 
 	user *User
 
-	muxFan sync.Mutex
-	mfan   map[string]*props.Fanout[WsClientMsg]
+	radio *props.Radio[WsClientMsg]
 
 	logger *slog.Logger
 }
@@ -669,22 +669,22 @@ func NewWsClient(ctx context.Context, cfg WsCfg, logger *slog.Logger) *WsClient 
 			APISecretKey: cfg.APISecretKey,
 		})
 	}
-
+	radio := props.NewRadio(
+		props.WithFanoutDur[WsClientMsg](time.Second),
+		props.WithFanoutLogger[WsClientMsg](logger),
+		props.WithFanoutChCap[WsClientMsg](cfg.ChCap),
+	)
 	ws := &WsClient{
 		ctx:       ctx,
 		ctxCancel: cancel,
 		wsCfg:     cfg,
 		user:      user,
-		mfan:      map[string]*props.Fanout[WsClientMsg]{},
+		radio:     radio,
 		logger:    logger,
 	}
 	ws.start()
 	return ws
 }
-
-// func (w *WsClient) Start() error {
-// 	return w.start()
-// }
 
 func (w *WsClient) start() {
 	rawWs := NewMergedWsRawClient(w.ctx, w.wsCfg, w.logger)
@@ -732,199 +732,113 @@ func (w *WsClient) dataHandler(msg RawWsClientMsg) {
 		w.logger.Error("Can not get event", "data", string(data))
 		return
 	}
-	w.muxFan.Lock()
-	defer w.muxFan.Unlock()
-
-	var specFans []*props.Fanout[WsClientMsg]
-	singleFan := w.mfan[string(e)]
-	allFan := w.mfan[mfanKeyAll]
-	var d any = data
+	// var specFans []*props.Fanout[WsClientMsg]
+	// singleFan := w.mfan[string(e)]
+	// allFan := w.mfan[mfanKeyAll]
+	newMsg := WsClientMsg{Event: e, Data: data, IsArray: isArray}
 	var err error
 	if w.rawWs.cfg.DataUnmarshaler != nil {
-		d, err = w.rawWs.cfg.DataUnmarshaler(e, isArray, data)
+		newMsg.Data, err = w.rawWs.cfg.DataUnmarshaler(e, isArray, data)
 		if err != nil {
 			w.logger.Error("Can not unmarshal msg", "err", err, "data", string(data))
 			return
 		}
-		specFans = w.specFans(e, isArray, d)
+		w.specFans(isArray, newMsg)
 	}
-	newMsg := WsClientMsg{Event: e, Data: d, IsArray: isArray}
-	if singleFan != nil {
-		singleFan.Broadcast(newMsg)
-	}
-	if allFan != nil {
-		allFan.Broadcast(newMsg)
-	}
-	for _, fan := range specFans {
-		if fan != nil {
-			fan.Broadcast(newMsg)
-		}
-	}
+	w.radio.Broadcast(string(e), newMsg)
+	w.radio.Broadcast(mfanKeyAll, newMsg)
+	// if singleFan != nil {
+	// 	singleFan.Broadcast(newMsg)
+	// }
+	// if allFan != nil {
+	// 	allFan.Broadcast(newMsg)
+	// }
+	// for _, fan := range specFans {
+	// 	if fan != nil {
+	// 		fan.Broadcast(newMsg)
+	// 	}
+	// }
 }
 
-func (w *WsClient) specFans(e WsEvent, isArray bool, d any) (fans []*props.Fanout[WsClientMsg]) {
-	switch e {
+func (w *WsClient) specFans(isArray bool, newMsg WsClientMsg) (fans []*props.Fanout[WsClientMsg]) {
+	d := newMsg.Data
+	switch newMsg.Event {
 	case WsEventAggTrade:
 		s, ok := d.(WsAggTradeStream)
 		if !ok {
 			return
 		}
-		fan := w.mfan[strings.ToLower(s.Symbol)+"@"+string(WsEventAggTrade)]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
+		w.radio.Broadcast(strings.ToLower(s.Symbol)+"@"+string(WsEventAggTrade), newMsg)
 	case WsEventTrade:
 		s, ok := d.(WsTradeStream)
 		if !ok {
 			return
 		}
-		fan := w.mfan[strings.ToLower(s.Symbol)+"@"+string(WsEventTrade)]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
+		w.radio.Broadcast(strings.ToLower(s.Symbol)+"@"+string(WsEventTrade), newMsg)
 	case WsEventKline:
 		s, ok := d.(WsKlineStream)
 		if !ok {
 			return
 		}
-		fan := w.mfan[strings.ToLower(s.Symbol)+"@"+string(WsEventKline)+"_"+string(s.Kline.Interval)]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
-		fan = w.mfan[strings.ToLower(s.Symbol)+"@"+string(WsEventKline)+"_"]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
+		w.radio.Broadcast(strings.ToLower(s.Symbol)+"@"+string(WsEventKline)+"_"+string(s.Kline.Interval), newMsg)
+		w.radio.Broadcast(strings.ToLower(s.Symbol)+"@"+string(WsEventKline)+"_", newMsg)
 	case WsEventDepthUpdate:
 		s, ok := d.(WsDepthStream)
 		if !ok {
 			return
 		}
-		fan := w.mfan[strings.ToLower(s.Symbol)+"@depth"]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
-		fan = w.mfan[strings.ToLower(s.Symbol)+"@depth@100ms"]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
-		fan = w.mfan[strings.ToLower(s.Symbol)+"@depth@250ms"]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
-		fan = w.mfan[strings.ToLower(s.Symbol)+"@depth@500ms"]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
+		w.radio.Broadcast(strings.ToLower(s.Symbol)+"@depth", newMsg)
+		w.radio.Broadcast(strings.ToLower(s.Symbol)+"@depth@100ms", newMsg)
+		w.radio.Broadcast(strings.ToLower(s.Symbol)+"@depth@250ms", newMsg)
+		w.radio.Broadcast(strings.ToLower(s.Symbol)+"@depth@500ms", newMsg)
 	case WsEventMarkPriceUpdate:
 		if isArray {
-			fan := w.mfan["!markPrice@arr@1s"]
-			if fan != nil {
-				fans = append(fans, fan)
-			}
-			fan = w.mfan["!markPrice@arr"]
-			if fan != nil {
-				fans = append(fans, fan)
-			}
+			w.radio.Broadcast("!markPrice@arr@1s", newMsg)
+			w.radio.Broadcast("!markPrice@arr", newMsg)
 			return
 		}
 		s, ok := d.(WsMarkPriceStream)
 		if !ok {
 			return
 		}
-		fan := w.mfan[strings.ToLower(s.Symbol)+"@markPrice"]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
-		fan = w.mfan[strings.ToLower(s.Symbol)+"@markPrice@1s"]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
+		w.radio.Broadcast(strings.ToLower(s.Symbol)+"@markPrice", newMsg)
+		w.radio.Broadcast(strings.ToLower(s.Symbol)+"@markPrice@1s", newMsg)
 	case WsEventIndexPriceUpdate:
 		s, ok := d.(WsCMIndexPriceStream)
 		if !ok {
 			return
 		}
-		fan := w.mfan[strings.ToLower(s.Pair)+"@indexPrice"]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
-		fan = w.mfan[strings.ToLower(s.Pair)+"@indexPrice@1s"]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
+		w.radio.Broadcast(strings.ToLower(s.Pair)+"@indexPrice", newMsg)
+		w.radio.Broadcast(strings.ToLower(s.Pair)+"@indexPrice@1s", newMsg)
 	case WsEventForceOrder:
 		s, ok := d.(WsLiquidationOrderStream)
 		if !ok {
 			return
 		}
-		fan := w.mfan[strings.ToLower(s.Order.Symbol)+"@"+string(WsEventForceOrder)]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
-		fan = w.mfan["!forceOrder@arr"]
-		if fan != nil {
-			fans = append(fans, fan)
-		}
+		w.radio.Broadcast(strings.ToLower(s.Order.Symbol)+"@"+string(WsEventForceOrder), newMsg)
+		w.radio.Broadcast("!forceOrder@arr", newMsg)
 	}
 	return
 }
 
 func (w *WsClient) sendToAll(msg WsClientMsg) {
-	w.muxFan.Lock()
-	defer w.muxFan.Unlock()
-	for _, fan := range w.mfan {
-		if fan != nil {
-			fan.Broadcast(msg)
-		}
-	}
-}
-
-func (w *WsClient) event2MfanKey(event string) string {
-	// do not use empty string as mfan key
-	if event == "" {
-		event = mfanKeyAll
-	}
-	return event
+	w.radio.Broadcast(mfanKeyAll, msg)
 }
 
 // newSuberCh
 // Pass empty string if you want listen all events.
 // Should SubStream firstly.
 func (w *WsClient) newSuberCh(event string) <-chan WsClientMsg {
-	w.muxFan.Lock()
-	defer w.muxFan.Unlock()
-	// do not use empty string as mfan key
-	key := w.event2MfanKey(event)
-	fan := w.mfan[key]
-	if fan == nil {
-		fan = props.NewFanout(props.WithFanoutDur[WsClientMsg](time.Second))
-		w.mfan[key] = fan
-	}
-	return fan.Sub()
+	return w.radio.Sub(event)
 }
 
 func (w *WsClient) Unsub(event string, ch <-chan WsClientMsg) {
-	w.muxFan.Lock()
-	defer w.muxFan.Unlock()
-	key := w.event2MfanKey(event)
-	fan := w.mfan[key]
-	if fan == nil {
-		return
-	}
-	fan.Unsub(ch)
+	w.radio.Unsub(event, ch)
 }
 
 func (w *WsClient) subStream(events ...string) (result RawWsSubStreamResult, err error) {
 	return w.rawWs.SubStream(events...)
 }
-
-// func wsClientSubEvent[D any](ws *WsClient, event string, rawChGetter func() <-chan WsClientMsg) (*WsClientSubscription[D], error) {
-// 	ch := rawChGetter()
-// 	sub := NewWsClientSubscription[D](ws, event, ch)
-// 	sub.start()
-// 	return sub, nil
-// }
 
 // SubAggTradeStream real time
 func (w *WsClient) SubAggTradeStream(symbols ...string) (result RawWsSubStreamResult, err error) {

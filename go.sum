@@ -6,14 +6,12 @@ github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
-github.com/dwdwow/limiter-go v0.0.0-20250818125754-3810f4da2154 h1:RQJFMu9JVWjnUPRGAEA81Z43fv6OAwMJOWfs7VCbapM=
-github.com/dwdwow/limiter-go v0.0.0-20250818125754-3810f4da2154/go.mod h1:ycTVVi2F5hu4nsvEZo+Mkj9YMEBRXjg29V/eH3ckxK8=
-github.com/dwdwow/limiter-go v0.0.0-20250818132240-f32d59388601 h1:P0ok5xLNYBPD41rR79zdj6lUgQ9Ii04c3mthVrUnOrU=
-github.com/dwdwow/limiter-go v0.0.0-20250818132240-f32d59388601/go.mod h1:ycTVVi2F5hu4nsvEZo+Mkj9YMEBRXjg29V/eH3ckxK8=
 github.com/dwdwow/limiter-go v0.0.10 h1:TYzVY11xF/uqOC2UjPang1AEPd/rJdnAJjUKmjosXqc=
 github.com/dwdwow/limiter-go v0.0.10/go.mod h1:ycTVVi2F5hu4nsvEZo+Mkj9YMEBRXjg29V/eH3ckxK8=
 github.com/dwdwow/props v0.0.15 h1:vD5Lmb1czqCYj6YKL6X9d/WUtMbHQn8oyM7sCI2OqrU=
 github.com/dwdwow/props v0.0.15/go.mod h1:dWhnhFKeTzqSbKlYuNzY6QhJv93eE9Yq/t3O61QMybA=
+github.com/dwdwow/props v0.0.16 h1:Gq0zs/NhWwdEv1gqASB99l0bpLU9RDad3OV6O+a1Ctc=
+github.com/dwdwow/props v0.0.16/go.mod h1:dWhnhFKeTzqSbKlYuNzY6QhJv93eE9Yq/t3O61QMybA=
 github.com/dwdwow/spub v0.0.1 h1:ys7aCCCOdeqhi+9nuGlosWmhYqnwKAD0fDHuBeTQ2Vw=
 github.com/dwdwow/spub v0.0.1/go.mod h1:E8hS715Cw+A8iZnMz86BxsKiUmuJf9I3snB8UL/rsbE=
 github.com/dwdwow/ws v0.0.3 h1:+mSYAN2LqAFPXk0uO7hujKsYW6MXFQoy+ObO5VTG/IA=
