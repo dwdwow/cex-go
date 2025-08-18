@@ -75,7 +75,7 @@ func NewRawWsClient(ctx context.Context, cfg WsCfg, logger *slog.Logger) *RawWsC
 		})
 	}
 	fan := props.NewFanout(
-		props.WithFanoutDur[RawWsClientMsg](time.Second),
+		props.WithFanoutDur[RawWsClientMsg](cfg.FanoutTimerDur),
 		props.WithFanoutLogger[RawWsClientMsg](logger),
 		props.WithFanoutChCap[RawWsClientMsg](cfg.ChCap),
 	)

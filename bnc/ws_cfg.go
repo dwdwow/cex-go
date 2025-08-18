@@ -108,6 +108,9 @@ type WsCfg struct {
 	// channel capacity
 	ChCap int
 
+	// fanout timer duration
+	FanoutTimerDur time.Duration
+
 	// binance has incoming massage limitation
 	// ex. spot 5/s, futures 10/s
 	ReqDur       time.Duration

@@ -234,9 +234,10 @@ func newOrderBookBaseClient(ctx context.Context, symbolType cex.SymbolType, logg
 	logger = logger.With("bnc_ob_base_clt", symbolType)
 	wsCfg := DefaultPublicWsCfg(symbolType)
 	wsCfg.MaxStream = maxObWsStream
+	wsCfg.FanoutTimerDur = 0
 	ws := NewRawWsClient(ctx, wsCfg, logger)
 	radio := props.NewRadio(
-		props.WithFanoutDur[ob.Data](time.Second),
+		// props.WithFanoutDur[ob.Data](time.Second),
 		props.WithFanoutLogger[ob.Data](logger),
 		props.WithFanoutChCap[ob.Data](10000),
 	)
@@ -305,6 +306,7 @@ func (oc *orderBookBaseClient) createSubParams(symbols ...string) []string {
 
 func (oc *orderBookBaseClient) sub(symbols ...string) (unsubed []string, err error) {
 	defer func() {
+		// create new worker for new symbols
 		for _, s := range symbols {
 			if !slices.Contains(unsubed, s) {
 				oc.newWorker(s)
@@ -337,13 +339,16 @@ func (oc *orderBookBaseClient) unsub(symbols ...string) (err error) {
 	for _, ch := range closedWorkers {
 		close(ch)
 	}
+	for _, symbol := range symbols {
+		od := oc.newObWithErr(symbol, ErrWsStreamUnsubed)
+		oc.radio.Broadcast(symbol, od)
+	}
 	// if delete cache data, may create some problems
-	// for _, symbol := range symbols {
-	// 	oc._exist.Delete(symbol)
-	// 	oc._cache.Delete(symbol)
-	// 	oc._ods.Delete(symbol)
-	// }
-	// remove workers
+	for _, symbol := range symbols {
+		oc._exist.Delete(symbol)
+		oc._cache.Delete(symbol)
+		oc._ods.Delete(symbol)
+	}
 	return nil
 }
 
@@ -445,28 +450,24 @@ func (oc *orderBookBaseClient) broadcastObs(obs []ob.Data) {
 	}
 }
 
-var ErrCachingObDepthUpdate = errors.New("bnc: caching ob depth update")
-var ErrObQueryLimit = errors.New("bnc: ob query limit")
-var ErrObDepthUpdateCacheTooLarge = errors.New("bnc: depth update cache too large")
-
 func (oc *orderBookBaseClient) update(depthData WsDepthMsg) (od ob.Data, updated bool) {
 	symbol := depthData.Symbol
 	err := oc.cacheRawData(depthData)
 	if err != nil {
-		return oc.setError(symbol, err), true
+		return oc.newObWithErr(symbol, err), true
 	}
 	if oc.needQueryOb(symbol) {
 		// check cache
 		oldCache := oc._cache.GetV(symbol)
 		if len(oldCache) < 10 {
-			return oc.setError(symbol, ErrCachingObDepthUpdate), false
+			return oc.newObWithErr(symbol, ErrCachingObDepthUpdate), false
 		}
 		if !publicRestLimitter.TryWait() {
-			return oc.setError(symbol, ErrObQueryLimit), true
+			return oc.newObWithErr(symbol, ErrObQueryLimit), true
 		}
 		err = oc.queryOb(symbol)
 		if err != nil {
-			return oc.setError(symbol, err), true
+			return oc.newObWithErr(symbol, err), true
 		}
 	}
 	od = oc.obUpdater(oc, depthData)
@@ -474,7 +475,7 @@ func (oc *orderBookBaseClient) update(depthData WsDepthMsg) (od ob.Data, updated
 	return od, true
 }
 
-func (oc *orderBookBaseClient) setError(symbol string, err error) ob.Data {
+func (oc *orderBookBaseClient) newObWithErr(symbol string, err error) ob.Data {
 	empty := ob.NewData(cex.BINANCE, oc.sybType, symbol)
 	empty.SetErr(err)
 	oc._ods.SetKV(symbol, empty)

@@ -196,6 +196,78 @@ const (
 	KLINE_INTERVAL_1M  KlineInterval = "1M"
 )
 
+func (i KlineInterval) Millisecond() (ms int64, ok bool) {
+	switch i {
+	case KLINE_INTERVAL_1s:
+		return 1000, true
+	case KLINE_INTERVAL_1m:
+		return 60000, true
+	case KLINE_INTERVAL_3m:
+		return 180000, true
+	case KLINE_INTERVAL_5m:
+		return 300000, true
+	case KLINE_INTERVAL_15m:
+		return 900000, true
+	case KLINE_INTERVAL_30m:
+		return 1800000, true
+	case KLINE_INTERVAL_1h:
+		return 3600000, true
+	case KLINE_INTERVAL_2h:
+		return 7200000, true
+	case KLINE_INTERVAL_4h:
+		return 14400000, true
+	case KLINE_INTERVAL_6h:
+		return 21600000, true
+	case KLINE_INTERVAL_8h:
+		return 28800000, true
+	case KLINE_INTERVAL_12h:
+		return 43200000, true
+	case KLINE_INTERVAL_1d:
+		return 86400000, true
+	case KLINE_INTERVAL_3d:
+		return 259200000, true
+	case KLINE_INTERVAL_1w:
+		return 604800000, true
+	}
+	return 0, false
+}
+
+func MillisecondToKlineInterval(ms int64) (KlineInterval, bool) {
+	switch ms {
+	case 1000:
+		return KLINE_INTERVAL_1s, true
+	case 60000:
+		return KLINE_INTERVAL_1m, true
+	case 180000:
+		return KLINE_INTERVAL_3m, true
+	case 300000:
+		return KLINE_INTERVAL_5m, true
+	case 900000:
+		return KLINE_INTERVAL_15m, true
+	case 1800000:
+		return KLINE_INTERVAL_30m, true
+	case 3600000:
+		return KLINE_INTERVAL_1h, true
+	case 7200000:
+		return KLINE_INTERVAL_2h, true
+	case 14400000:
+		return KLINE_INTERVAL_4h, true
+	case 21600000:
+		return KLINE_INTERVAL_6h, true
+	case 28800000:
+		return KLINE_INTERVAL_8h, true
+	case 43200000:
+		return KLINE_INTERVAL_12h, true
+	case 86400000:
+		return KLINE_INTERVAL_1d, true
+	case 259200000:
+		return KLINE_INTERVAL_3d, true
+	case 604800000:
+		return KLINE_INTERVAL_1w, true
+	}
+	return "", false
+}
+
 type Symbol string
 
 const (
