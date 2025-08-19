@@ -14,6 +14,7 @@ const (
 	WsMethodSub     WsMethod = "SUBSCRIBE"
 	WsMethodUnsub   WsMethod = "UNSUBSCRIBE"
 	WsMethodRequest WsMethod = "REQUEST"
+	WsMethodListSub WsMethod = "LIST_SUBSCRIPTIONS"
 )
 
 type WsEvent string
@@ -55,27 +56,37 @@ const (
 	WsEventRiskLevelChange               WsEvent = "riskLevelChange"
 )
 
-type WsSubMsg struct {
-	Method WsMethod `json:"method"`
-	Params []string `json:"params"`
-	Id     string   `json:"id"`
+type WsMsgId interface {
+	~string | ~int64
 }
 
-type WsSubMsgInt64Id struct {
-	Method WsMethod `json:"method"`
-	Params []string `json:"params"`
-	Id     int64    `json:"id"`
+type WsReq[P any, ID WsMsgId] struct {
+	Method WsMethod `json:"method,omitempty"`
+	Params P        `json:"params,omitempty"`
+	// id can be int64/string/null
+	Id ID `json:"id,omitempty"`
 }
 
-type WsReqMsg struct {
-	Method WsMethod `json:"method"`
-	Params []any    `json:"params"`
-	Id     string   `json:"id"`
+type WsResp[R any] struct {
+	// id can be int64/string/null
+	Id         any               `json:"id"`
+	Status     int64             `json:"status"`
+	Result     R                 `json:"result"`
+	RateLimits []WsRespRateLimit `json:"rateLimits"`
+	Error      *WsRespErr        `json:"error"`
 }
 
-type WsRespMsg[R any] struct {
-	Result R     `json:"result"`
-	Id     int64 `json:"id"`
+type WsRespErr struct {
+	Code int64  `json:"code"`
+	Msg  string `json:"msg"`
+}
+
+type WsRespRateLimit struct {
+	RateLimitType string `json:"rateLimitType"`
+	Interval      string `json:"interval"`
+	IntervalNum   int64  `json:"intervalNum"`
+	Limit         int64  `json:"limit"`
+	Count         int64  `json:"count"`
 }
 
 type WsDepthMsg struct {

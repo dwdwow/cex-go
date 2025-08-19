@@ -12,3 +12,5 @@ var publicRestLimitter = limiter.New(time.Second, 5)
 
 const maxObWsStream = 20
 const maxWsChCap = 10000
+const maxSpWsReqPerSec = 5
+const maxFuWsReqPerSec = 10

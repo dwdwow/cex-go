@@ -1,182 +1,75 @@
 package bnc
 
 import (
-	"encoding/json"
-	"fmt"
-	"time"
-
 	"github.com/dwdwow/cex-go"
 )
 
-type WsDataUnmarshaler func(e WsEvent, isArray bool, data []byte) (any, error)
-
-func unmarshal[T any](data []byte) (t T, err error) {
-	err = json.Unmarshal(data, &t)
-	return
-}
-
-func spotWsPrivateMsgUnmarshaler(e WsEvent, _ bool, data []byte) (any, error) {
-	switch e {
-	case WsEventOutboundAccountPosition:
-		return unmarshal[WsSpotAccountUpdate](data)
-	case WsEventBalanceUpdate:
-		return unmarshal[WsSpotBalanceUpdate](data)
-	case WsEventExecutionReport:
-		return unmarshal[WsOrderExecutionReport](data)
-	case WsEventListStatus:
-		return unmarshal[WsSpotListStatus](data)
-	case WsEventListenKeyExpired:
-		return unmarshal[WsListenKeyExpired](data)
-	default:
-		return nil, fmt.Errorf("bnc: unknown event %v", e)
-	}
-}
-
-func spotWsPublicMsgUnmarshaler(e WsEvent, _ bool, data []byte) (any, error) {
-	switch e {
-	case WsEventAggTrade:
-		return unmarshal[WsAggTradeStream](data)
-	case WsEventTrade:
-		return unmarshal[WsTradeStream](data)
-	case WsEventKline:
-		return unmarshal[WsKlineStream](data)
-	case WsEventDepthUpdate:
-		return unmarshal[WsDepthStream](data)
-	default:
-		return nil, fmt.Errorf("bnc: unknown event %v", e)
-	}
-}
-
-func umFuturesWsPublicMsgUnmarshaler(e WsEvent, isArray bool, data []byte) (any, error) {
-	switch e {
-	case WsEventAggTrade:
-		return unmarshal[WsAggTradeStream](data)
-	case WsEventMarkPriceUpdate:
-		if isArray {
-			return unmarshal[[]WsMarkPriceStream](data)
-		}
-		return unmarshal[WsMarkPriceStream](data)
-	case WsEventForceOrder:
-		if isArray {
-			return unmarshal[[]WsLiquidationOrderStream](data)
-		}
-		return unmarshal[WsLiquidationOrderStream](data)
-	case WsEventKline:
-		return unmarshal[WsKlineStream](data)
-	case WsEventDepthUpdate:
-		return unmarshal[WsDepthStream](data)
-	default:
-		return nil, fmt.Errorf("bnc: unknown event %v", e)
-	}
-}
-
-func cmFuturesWsPublicMsgUnmarshaler(e WsEvent, isArray bool, data []byte) (any, error) {
-	switch e {
-	case WsEventAggTrade:
-		return unmarshal[WsAggTradeStream](data)
-	case WsEventIndexPriceUpdate:
-		return unmarshal[WsCMIndexPriceStream](data)
-	case WsEventMarkPriceUpdate:
-		if isArray {
-			return unmarshal[[]WsMarkPriceStream](data)
-		}
-		return unmarshal[WsMarkPriceStream](data)
-	case WsEventForceOrder:
-		if isArray {
-			return unmarshal[[]WsLiquidationOrderStream](data)
-		}
-		return unmarshal[WsLiquidationOrderStream](data)
-	case WsEventKline:
-		return unmarshal[WsKlineStream](data)
-	case WsEventDepthUpdate:
-		return unmarshal[WsDepthStream](data)
-	default:
-		return nil, fmt.Errorf("bnc: unknown event %v", e)
-	}
-}
-
-type WsCfg struct {
+type RawWsCfg struct {
 	// ws url without streams and auth tokens
-	Url          string
+	Url string
+
+	APIKey       string
+	APISecretKey string
 	ListenKeyUrl string
+
+	// default is millisecond
+	// if true, use microsecond
+	// just spot stream has microsecond
+	Microsecond bool
 
 	// max stream per websocket client
 	// ex. spot 1024, portfolio margin / futures 200
 	// normally just for public websocket
 	MaxStream int
 
-	// channel capacity
-	ChCap int
-
-	// fanout timer duration
-	FanoutTimerDur time.Duration
-
-	// binance has incoming massage limitation
-	// ex. spot 5/s, futures 10/s
-	ReqDur       time.Duration
-	MaxReqPerDur int
-
-	APIKey       string
-	APISecretKey string
-
-	// just use in WsClient
-	DataUnmarshaler WsDataUnmarshaler
+	// max request per second
+	MaxReqPerSecond int
 }
 
-var spotPublicWsCfg = WsCfg{
+var spotPublicWsCfg = RawWsCfg{
 	Url:             WsBaseUrl,
 	MaxStream:       1024,
-	ChCap:           maxWsChCap,
-	ReqDur:          time.Second,
-	MaxReqPerDur:    5,
-	DataUnmarshaler: spotWsPublicMsgUnmarshaler,
+	Microsecond:     true,
+	MaxReqPerSecond: maxSpWsReqPerSec,
 }
 
-func DefaultSpotPublicWsCfg() WsCfg {
+func DefaultSpotPublicWsCfg() RawWsCfg {
 	return spotPublicWsCfg
 }
 
-var spotPrivateWsCfg = WsCfg{
+var spotPrivateWsCfg = RawWsCfg{
 	Url:             WsBaseUrl,
 	ListenKeyUrl:    API_ENDPOINT + API_V3 + "/userDataStream",
 	MaxStream:       1024,
-	ChCap:           maxWsChCap,
-	ReqDur:          time.Second,
-	MaxReqPerDur:    10,
-	DataUnmarshaler: spotWsPrivateMsgUnmarshaler,
+	Microsecond:     true,
+	MaxReqPerSecond: maxSpWsReqPerSec,
 }
 
-func DefaultSpotPrivateWsCfg() WsCfg {
+func DefaultSpotPrivateWsCfg() RawWsCfg {
 	return spotPrivateWsCfg
 }
 
-var umPublicWsCfg = WsCfg{
+var umPublicWsCfg = RawWsCfg{
 	Url:             FutureWsBaseUrl,
 	MaxStream:       200,
-	ChCap:           maxWsChCap,
-	ReqDur:          time.Second,
-	MaxReqPerDur:    10,
-	DataUnmarshaler: umFuturesWsPublicMsgUnmarshaler,
+	MaxReqPerSecond: maxFuWsReqPerSec,
 }
 
-func DefaultUmPublicWsCfg() WsCfg {
+func DefaultUmPublicWsCfg() RawWsCfg {
 	return umPublicWsCfg
 }
 
-var cmPublicWsCfg = WsCfg{
+var cmPublicWsCfg = RawWsCfg{
 	Url:             CMFutureWsBaseUrl,
 	MaxStream:       200,
-	ChCap:           maxWsChCap,
-	ReqDur:          time.Second,
-	MaxReqPerDur:    10,
-	DataUnmarshaler: cmFuturesWsPublicMsgUnmarshaler,
+	MaxReqPerSecond: maxFuWsReqPerSec,
 }
 
-func DefaultCmPublicWsCfg() WsCfg {
+func DefaultCmPublicWsCfg() RawWsCfg {
 	return cmPublicWsCfg
 }
 
-func DefaultPublicWsCfg(symbolType cex.SymbolType) WsCfg {
+func DefaultPublicWsCfg(symbolType cex.SymbolType) RawWsCfg {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
 		return DefaultSpotPublicWsCfg()
@@ -186,4 +79,13 @@ func DefaultPublicWsCfg(symbolType cex.SymbolType) WsCfg {
 		return DefaultCmPublicWsCfg()
 	}
 	panic("bnc: unknown symbol type")
+}
+
+type WebsocketCfg struct {
+}
+
+var defaultWebsocketCfg = WebsocketCfg{}
+
+func DefaultWebsocketCfg() WebsocketCfg {
+	return defaultWebsocketCfg
 }

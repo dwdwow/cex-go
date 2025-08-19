@@ -20,29 +20,26 @@ type KlineWs struct {
 	cmClt *klineMergedWs
 }
 
-func NewKlineWs(ctx context.Context, logger *slog.Logger) *KlineWs {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+func NewKlineWs(logger *slog.Logger) *KlineWs {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 	logger = logger.With("ws", "bnc_kl_clt")
 	return &KlineWs{
-		spClt: newKlineMergedWs(ctx, cex.SYMBOL_TYPE_SPOT, logger),
-		umClt: newKlineMergedWs(ctx, cex.SYMBOL_TYPE_UM_FUTURES, logger),
-		cmClt: newKlineMergedWs(ctx, cex.SYMBOL_TYPE_CM_FUTURES, logger),
+		spClt: newKlineMergedWs(cex.SYMBOL_TYPE_SPOT, logger),
+		umClt: newKlineMergedWs(cex.SYMBOL_TYPE_UM_FUTURES, logger),
+		cmClt: newKlineMergedWs(cex.SYMBOL_TYPE_CM_FUTURES, logger),
 	}
 }
 
 func (kw *KlineWs) Sub(symbolType cex.SymbolType, interval KlineInterval, symbols ...string) (unsubed []string, err error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
-		return kw.spClt.subKlines(interval, symbols...)
+		return kw.spClt.sub(interval, symbols...)
 	case cex.SYMBOL_TYPE_UM_FUTURES:
-		return kw.umClt.subKlines(interval, symbols...)
+		return kw.umClt.sub(interval, symbols...)
 	case cex.SYMBOL_TYPE_CM_FUTURES:
-		return kw.cmClt.subKlines(interval, symbols...)
+		return kw.cmClt.sub(interval, symbols...)
 	}
 	return nil, errors.New("bnc: unknown symbol type")
 }
@@ -50,23 +47,23 @@ func (kw *KlineWs) Sub(symbolType cex.SymbolType, interval KlineInterval, symbol
 func (kw *KlineWs) Unsub(symbolType cex.SymbolType, interval KlineInterval, symbols ...string) (err error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
-		return kw.spClt.unsubKlines(interval, symbols...)
+		return kw.spClt.unsub(interval, symbols...)
 	case cex.SYMBOL_TYPE_UM_FUTURES:
-		return kw.umClt.unsubKlines(interval, symbols...)
+		return kw.umClt.unsub(interval, symbols...)
 	case cex.SYMBOL_TYPE_CM_FUTURES:
-		return kw.cmClt.unsubKlines(interval, symbols...)
+		return kw.cmClt.unsub(interval, symbols...)
 	}
 	return errors.New("bnc: unknown symbol type")
 }
 
-func (kw *KlineWs) NewCh(symbolType cex.SymbolType, symbol string, interval KlineInterval) (ch <-chan KlineMsg, err error) {
+func (kw *KlineWs) NewCh(symbolType cex.SymbolType, interval KlineInterval, symbol string) (ch <-chan KlineMsg, err error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
-		return kw.spClt.newCh(symbol, interval)
+		return kw.spClt.newCh(interval, symbol)
 	case cex.SYMBOL_TYPE_UM_FUTURES:
-		return kw.umClt.newCh(symbol, interval)
+		return kw.umClt.newCh(interval, symbol)
 	case cex.SYMBOL_TYPE_CM_FUTURES:
-		return kw.cmClt.newCh(symbol, interval)
+		return kw.cmClt.newCh(interval, symbol)
 	}
 	return nil, errors.New("bnc: unknown symbol type")
 }
@@ -77,11 +74,14 @@ func (kw *KlineWs) RemoveCh(ch <-chan KlineMsg) {
 	kw.cmClt.removeCh(ch)
 }
 
+func (kw *KlineWs) Close() {
+	kw.spClt.close()
+	kw.umClt.close()
+	kw.cmClt.close()
+}
+
 type klineMergedWs struct {
 	mu sync.Mutex
-
-	ctx    context.Context
-	cancel context.CancelFunc
 
 	symbolType cex.SymbolType
 
@@ -91,36 +91,30 @@ type klineMergedWs struct {
 	logger *slog.Logger
 }
 
-func newKlineMergedWs(ctx context.Context, symbolType cex.SymbolType, logger *slog.Logger) *klineMergedWs {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	ctx, cancel := context.WithCancel(ctx)
+func newKlineMergedWs(symbolType cex.SymbolType, logger *slog.Logger) *klineMergedWs {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 	logger = logger.With("bnc_kl_merged_clt", symbolType)
 	return &klineMergedWs{
-		ctx:        ctx,
-		cancel:     cancel,
 		symbolType: symbolType,
 		wsByStream: props.NewSafeRWMap[string, *klineBaseWs](),
 		logger:     logger,
 	}
 }
 
-func (kw *klineMergedWs) scanAllSymbols() {
+func (kw *klineMergedWs) scanAllStream() {
 	for _, clt := range kw.clts {
-		for _, s := range clt.ws.Stream() {
+		for _, s := range clt.rawWs.Streams() {
 			kw.wsByStream.SetIfNotExists(s, clt)
 		}
 	}
 }
 
-func (kw *klineMergedWs) subKlines(interval KlineInterval, symbols ...string) (unsubed []string, err error) {
+func (kw *klineMergedWs) sub(interval KlineInterval, symbols ...string) (unsubed []string, err error) {
 	kw.mu.Lock()
 	defer kw.mu.Unlock()
-	defer kw.scanAllSymbols()
+	defer kw.scanAllStream()
 	for _, s := range symbols {
 		if !kw.wsByStream.HasKey(klineStream(s, interval)) {
 			unsubed = append(unsubed, s)
@@ -132,7 +126,6 @@ func (kw *klineMergedWs) subKlines(interval KlineInterval, symbols ...string) (u
 		}
 		unsubed, err = clt.sub(interval, unsubed...)
 		if err != nil && err != ErrNotAllStreamSubed {
-			kw.logger.Error("bnc: sub klines failed", "err", err)
 			return
 		}
 	}
@@ -140,20 +133,23 @@ func (kw *klineMergedWs) subKlines(interval KlineInterval, symbols ...string) (u
 		if len(unsubed) == 0 {
 			return
 		}
-		clt := newKlineBaseWs(kw.ctx, kw.symbolType, kw.logger)
+		var clt *klineBaseWs
+		clt, err = startNewKlineBaseWs(kw.symbolType, kw.logger)
+		if err != nil {
+			return
+		}
 		unsubed, err = clt.sub(interval, unsubed...)
 		if err != nil && err != ErrNotAllStreamSubed {
-			kw.logger.Error("bnc: sub klines failed", "err", err)
 			return
 		}
 		kw.clts = append(kw.clts, clt)
 	}
 }
 
-func (kw *klineMergedWs) unsubKlines(interval KlineInterval, symbols ...string) (err error) {
+func (kw *klineMergedWs) unsub(interval KlineInterval, symbols ...string) (err error) {
 	kw.mu.Lock()
 	defer kw.mu.Unlock()
-	defer kw.scanAllSymbols()
+	defer kw.scanAllStream()
 	for _, s := range symbols {
 		clt, ok := kw.wsByStream.GetVWithOk(klineStream(s, interval))
 		if ok {
@@ -166,17 +162,23 @@ func (kw *klineMergedWs) unsubKlines(interval KlineInterval, symbols ...string) 
 	return nil
 }
 
-func (kw *klineMergedWs) newCh(symbol string, interval KlineInterval) (ch <-chan KlineMsg, err error) {
+func (kw *klineMergedWs) newCh(interval KlineInterval, symbol string) (ch <-chan KlineMsg, err error) {
 	clt, ok := kw.wsByStream.GetVWithOk(klineStream(symbol, interval))
 	if !ok {
 		return nil, errors.New("bnc: symbol not found")
 	}
-	return clt.newCh(symbol, interval), nil
+	return clt.newCh(interval, symbol), nil
 }
 
 func (kw *klineMergedWs) removeCh(ch <-chan KlineMsg) {
 	for _, clt := range kw.clts {
 		clt.removeCh(ch)
+	}
+}
+
+func (kw *klineMergedWs) close() {
+	for _, clt := range kw.clts {
+		clt.close()
 	}
 }
 
@@ -192,42 +194,39 @@ type klineBaseWs struct {
 
 	sybType cex.SymbolType
 
-	ws       *RawWsClient
-	rawMsgCh <-chan RawWsClientMsg
+	rawWs *RawWs
 
 	radio *props.Radio[KlineMsg]
 
 	logger *slog.Logger
 }
 
-func newKlineBaseWs(ctx context.Context, sybType cex.SymbolType, logger *slog.Logger) *klineBaseWs {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	ctx, cancel := context.WithCancel(ctx)
+func startNewKlineBaseWs(sybType cex.SymbolType, logger *slog.Logger) (ws *klineBaseWs, err error) {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 	logger = logger.With("bnc_kl_base_clt", sybType)
 	wsCfg := DefaultPublicWsCfg(sybType)
 	wsCfg.MaxStream = maxObWsStream
-	wsCfg.FanoutTimerDur = 0
-	ws := NewRawWsClient(ctx, wsCfg, logger)
+	rawWs, err := StartNewRawWs(wsCfg, logger)
+	if err != nil {
+		return
+	}
 	radio := props.NewRadio(
 		props.WithFanoutLogger[KlineMsg](logger),
 		props.WithFanoutChCap[KlineMsg](10000),
 	)
-	clt := &klineBaseWs{
-		ctx:      ctx,
-		cancel:   cancel,
-		ws:       ws,
-		rawMsgCh: ws.Sub(),
-		sybType:  sybType,
-		radio:    radio,
-		logger:   logger,
+	ctx, cancel := context.WithCancel(context.Background())
+	ws = &klineBaseWs{
+		ctx:     ctx,
+		cancel:  cancel,
+		rawWs:   rawWs,
+		sybType: sybType,
+		radio:   radio,
+		logger:  logger,
 	}
-	clt.run()
-	return clt
+	ws.run()
+	return
 }
 
 func (clt *klineBaseWs) createSubParams(interval KlineInterval, symbols ...string) (params []string) {
@@ -239,14 +238,13 @@ func (clt *klineBaseWs) createSubParams(interval KlineInterval, symbols ...strin
 
 func (clt *klineBaseWs) sub(interval KlineInterval, symbols ...string) (unsubed []string, err error) {
 	params := clt.createSubParams(interval, symbols...)
-	res, err := clt.ws.SubStream(params...)
+	res, err := clt.rawWs.Sub(params...)
 	if err == nil {
 		return
 	}
-	for _, p := range res.UnsubedParams {
+	for _, p := range res.UnsubedStreams {
 		for _, s := range symbols {
-			if strings.Contains(p, strings.ToLower(s)) &&
-				strings.Contains(p, "@kline_"+string(interval)) {
+			if p == klineStream(s, interval) {
 				unsubed = append(unsubed, s)
 				break
 			}
@@ -257,7 +255,7 @@ func (clt *klineBaseWs) sub(interval KlineInterval, symbols ...string) (unsubed 
 
 func (clt *klineBaseWs) unsub(interval KlineInterval, symbols ...string) (err error) {
 	params := clt.createSubParams(interval, symbols...)
-	err = clt.ws.UnsubStream(params...)
+	_, err = clt.rawWs.Unsub(params...)
 	if err != nil {
 		return err
 	}
@@ -271,7 +269,7 @@ func (clt *klineBaseWs) unsub(interval KlineInterval, symbols ...string) (err er
 	return nil
 }
 
-func (clt *klineBaseWs) newCh(symbol string, interval KlineInterval) <-chan KlineMsg {
+func (clt *klineBaseWs) newCh(interval KlineInterval, symbol string) <-chan KlineMsg {
 	return clt.radio.Sub(klineStream(symbol, interval))
 }
 
@@ -283,30 +281,54 @@ func (clt *klineBaseWs) run() {
 	go clt.listener()
 }
 
+func (clt *klineBaseWs) close() {
+	clt.cancel()
+	clt.rawWs.Close()
+}
+
 func (clt *klineBaseWs) listener() {
 	for {
-		select {
-		case <-clt.ctx.Done():
+		msg := clt.rawWs.Wait()
+		if errors.Is(msg.Err, ErrWsClientClosed) {
 			return
-		case msg := <-clt.rawMsgCh:
-			klineMsg := KlineMsg{
-				SymbolType: clt.sybType,
-			}
-			if msg.Err != nil {
-				klineMsg.Err = msg.Err
-				clt.radio.BroadcastAll(klineMsg)
-				continue
-			}
-			var stream WsKlineStream
-			if err := json.Unmarshal(msg.Data, &stream); err != nil {
-				klineMsg.Err = err
-				clt.radio.BroadcastAll(klineMsg)
-				continue
-			}
-			kline := stream.Kline
-			klineMsg.Kline = kline
-			clt.radio.Broadcast(klineStream(kline.Symbol, kline.Interval), klineMsg)
 		}
+		klineMsg := KlineMsg{
+			SymbolType: clt.sybType,
+		}
+		if msg.Err != nil {
+			klineMsg.Err = msg.Err
+			clt.radio.BroadcastAll(klineMsg)
+			continue
+		}
+		var stream WsKlineStream
+		if err := json.Unmarshal(msg.Data, &stream); err != nil {
+			klineMsg.Err = err
+			clt.radio.BroadcastAll(klineMsg)
+			continue
+		}
+		kline := stream.Kline
+		klineMsg.Kline = kline
+		if stream.EventType == WsEventKline {
+			clt.radio.Broadcast(klineStream(kline.Symbol, kline.Interval), klineMsg)
+			continue
+		}
+		if stream.EventType != "" {
+			// should not happen
+			klineMsg.Err = fmt.Errorf("unknown event type msg: %s", string(msg.Data))
+			if kline.Symbol != "" && kline.Interval != "" {
+				clt.radio.Broadcast(klineStream(kline.Symbol, kline.Interval), klineMsg)
+			} else {
+				clt.radio.BroadcastAll(klineMsg)
+			}
+			continue
+		}
+		var resp WsResp[any]
+		if err := json.Unmarshal(msg.Data, &resp); err == nil && resp.Error != nil {
+			klineMsg.Err = fmt.Errorf("bnc: %d %s", resp.Error.Code, resp.Error.Msg)
+			clt.radio.BroadcastAll(klineMsg)
+			continue
+		}
+		clt.logger.Warn("unhandled kline ws msg", "msg", string(msg.Data))
 	}
 }
 

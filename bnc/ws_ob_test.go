@@ -1,7 +1,6 @@
 package bnc
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -10,7 +9,7 @@ import (
 )
 
 func TestOrderbookClient(t *testing.T) {
-	clt := NewOrderBookWs(context.Background(), nil)
+	clt := NewOrderBookWs(nil)
 	clt.Sub(cex.SYMBOL_TYPE_SPOT, "BTCUSDT", "ETHUSDT", "SOLUSDT")
 	clt.Sub(cex.SYMBOL_TYPE_UM_FUTURES, "BTCUSDT", "ETHUSDT", "SOLUSDT")
 	ch1, err := clt.NewCh(cex.SYMBOL_TYPE_UM_FUTURES, "BTCUSDT")
@@ -133,7 +132,7 @@ func TestOrderbookClient(t *testing.T) {
 }
 
 func TestOrderbookClient2(t *testing.T) {
-	clt := NewOrderBookWs(context.Background(), nil)
+	clt := NewOrderBookWs(nil)
 	symbols := []string{
 		"BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
 		"ADAUSDT", "DOGEUSDT", "MATICUSDT", "DOTUSDT", "LTCUSDT",
@@ -243,11 +242,14 @@ func TestOrderbookClient2(t *testing.T) {
 	clt.Unsub(cex.SYMBOL_TYPE_SPOT, "C98USDT")
 	time.Sleep(time.Second * 10)
 	clt.RemoveCh(ch3)
-	select {}
+	time.Sleep(time.Second * 10)
 }
 
 func TestOrderbookBaseClient(t *testing.T) {
-	clt := newOrderBookBaseWs(context.Background(), cex.SYMBOL_TYPE_UM_FUTURES, nil)
+	clt, err := startNewOrderBookBaseWs(cex.SYMBOL_TYPE_UM_FUTURES, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	unsubed, err := clt.subSymbols(
 		"BTCUSDT",
 		"ETHUSDT",

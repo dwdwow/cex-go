@@ -1,7 +1,6 @@
 package bnc
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"testing"
@@ -54,14 +53,21 @@ var spotSymbols200 = []string{
 }
 
 func TestKlineBaseWs(t *testing.T) {
-	clt := newKlineBaseWs(context.Background(), cex.SYMBOL_TYPE_UM_FUTURES, slog.Default())
+	clt, err := startNewKlineBaseWs(cex.SYMBOL_TYPE_UM_FUTURES, slog.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
 	unsubed, err := clt.sub(KLINE_INTERVAL_1m, spotSymbols200[:20]...)
 	if err != nil {
 		t.Fatal(err, len(unsubed), unsubed)
 	}
-	ch1 := clt.newCh("BTCUSDT", KLINE_INTERVAL_1m)
-	ch2 := clt.newCh("ETHUSDT", KLINE_INTERVAL_1m)
-	ch3 := clt.newCh("ADAUSDT", KLINE_INTERVAL_1m)
+	unsubed, err = clt.sub(KLINE_INTERVAL_1m, spotSymbols200[10:20]...)
+	if err != nil {
+		t.Fatal(err, len(unsubed), unsubed)
+	}
+	ch1 := clt.newCh(KLINE_INTERVAL_1m, "BTCUSDT")
+	ch2 := clt.newCh(KLINE_INTERVAL_1m, "ETHUSDT")
+	ch3 := clt.newCh(KLINE_INTERVAL_1m, "ADAUSDT")
 	go func() {
 		for msg := range ch1 {
 			if msg.Err != nil {
@@ -96,11 +102,10 @@ func TestKlineBaseWs(t *testing.T) {
 	}
 	time.Sleep(time.Second * 10)
 	clt.removeCh(ch2)
-	time.Sleep(time.Second * 10)
 }
 
 func TestKlineWs(t *testing.T) {
-	clt := NewKlineWs(context.Background(), slog.Default())
+	clt := NewKlineWs(slog.Default())
 	unsubed, err := clt.Sub(
 		cex.SYMBOL_TYPE_SPOT,
 		KLINE_INTERVAL_1m,
@@ -117,19 +122,19 @@ func TestKlineWs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err, len(unsubed), unsubed)
 	}
-	ch1, err := clt.NewCh(cex.SYMBOL_TYPE_SPOT, "BTCUSDT", KLINE_INTERVAL_1m)
+	ch1, err := clt.NewCh(cex.SYMBOL_TYPE_SPOT, KLINE_INTERVAL_1m, "BTCUSDT")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ch2, err := clt.NewCh(cex.SYMBOL_TYPE_UM_FUTURES, "BTCUSDT", KLINE_INTERVAL_1m)
+	ch2, err := clt.NewCh(cex.SYMBOL_TYPE_UM_FUTURES, KLINE_INTERVAL_1m, "BTCUSDT")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ch3, err := clt.NewCh(cex.SYMBOL_TYPE_SPOT, "ETHUSDT", KLINE_INTERVAL_1m)
+	ch3, err := clt.NewCh(cex.SYMBOL_TYPE_SPOT, KLINE_INTERVAL_1m, "ETHUSDT")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ch4, err := clt.NewCh(cex.SYMBOL_TYPE_UM_FUTURES, "ETHUSDT", KLINE_INTERVAL_1m)
+	ch4, err := clt.NewCh(cex.SYMBOL_TYPE_UM_FUTURES, KLINE_INTERVAL_1m, "ETHUSDT")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,5 +192,4 @@ func TestKlineWs(t *testing.T) {
 	}
 	time.Sleep(time.Second * 10)
 	clt.RemoveCh(ch3)
-	time.Sleep(time.Second * 10)
 }

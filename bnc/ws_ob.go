@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"slices"
@@ -24,18 +25,15 @@ type OrderBookWs struct {
 	cmClt *orderBookMergedWs
 }
 
-func NewOrderBookWs(ctx context.Context, logger *slog.Logger) *OrderBookWs {
-	if ctx == nil {
-		ctx = context.Background()
-	}
+func NewOrderBookWs(logger *slog.Logger) *OrderBookWs {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 	logger = logger.With("ws", "bnc_ob_clt")
 	return &OrderBookWs{
-		spClt: newOrderBookMergedWs(ctx, cex.SYMBOL_TYPE_SPOT, logger),
-		umClt: newOrderBookMergedWs(ctx, cex.SYMBOL_TYPE_UM_FUTURES, logger),
-		cmClt: newOrderBookMergedWs(ctx, cex.SYMBOL_TYPE_CM_FUTURES, logger),
+		spClt: newOrderBookMergedWs(cex.SYMBOL_TYPE_SPOT, logger),
+		umClt: newOrderBookMergedWs(cex.SYMBOL_TYPE_UM_FUTURES, logger),
+		cmClt: newOrderBookMergedWs(cex.SYMBOL_TYPE_CM_FUTURES, logger),
 	}
 }
 
@@ -81,11 +79,14 @@ func (oc *OrderBookWs) RemoveCh(ch <-chan ob.Data) {
 	oc.cmClt.removeCh(ch)
 }
 
+func (oc *OrderBookWs) Close() {
+	oc.spClt.close()
+	oc.umClt.close()
+	oc.cmClt.close()
+}
+
 type orderBookMergedWs struct {
 	mu sync.Mutex
-
-	ctx    context.Context
-	cancel context.CancelFunc
 
 	symbolType cex.SymbolType
 
@@ -95,18 +96,12 @@ type orderBookMergedWs struct {
 	logger *slog.Logger
 }
 
-func newOrderBookMergedWs(ctx context.Context, symbolType cex.SymbolType, logger *slog.Logger) *orderBookMergedWs {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	ctx, cancel := context.WithCancel(ctx)
+func newOrderBookMergedWs(symbolType cex.SymbolType, logger *slog.Logger) *orderBookMergedWs {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 	logger = logger.With("bnc_ob_merged_clt", symbolType)
 	return &orderBookMergedWs{
-		ctx:        ctx,
-		cancel:     cancel,
 		symbolType: symbolType,
 		sybs:       props.NewSafeRWMap[string, *orderBookBaseWs](),
 		logger:     logger,
@@ -144,7 +139,12 @@ func (oc *orderBookMergedWs) subSymbols(symbols ...string) (unsubed []string, er
 		if len(unsubed) == 0 {
 			return
 		}
-		clt := newOrderBookBaseWs(oc.ctx, oc.symbolType, oc.logger)
+		var clt *orderBookBaseWs
+		clt, err = startNewOrderBookBaseWs(oc.symbolType, oc.logger)
+		if err != nil {
+			oc.logger.Error("bnc: start new order book base ws failed", "err", err)
+			return
+		}
 		unsubed, err = clt.subSymbols(unsubed...)
 		if err != nil && err != ErrNotAllStreamSubed {
 			oc.logger.Error("bnc: sub symbols failed", "err", err)
@@ -187,6 +187,12 @@ func (oc *orderBookMergedWs) removeCh(ch <-chan ob.Data) {
 	}
 }
 
+func (oc *orderBookMergedWs) close() {
+	for _, clt := range oc.clts {
+		clt.close()
+	}
+}
+
 type obGetter func(ParamsOrderBook) (OrderBook, error)
 
 func defaultObGetter(symbolType cex.SymbolType) obGetter {
@@ -209,46 +215,42 @@ type orderBookBaseWs struct {
 	obGetter  obGetter
 	obUpdater obUpdater
 
-	ws *RawWsClient
+	rawWs *RawWs
 
 	_cache  *props.SafeRWMap[string, []WsDepthMsg]
 	_exist  *props.SafeRWMap[string, bool]
 	_ods    *props.SafeRWMap[string, ob.Data]
 	workers *props.SafeRWMap[string, chan WsDepthMsg]
 
-	rawMsgCh <-chan RawWsClientMsg
-
 	radio *props.Radio[ob.Data]
 
 	logger *slog.Logger
 }
 
-func newOrderBookBaseWs(ctx context.Context, symbolType cex.SymbolType, logger *slog.Logger) *orderBookBaseWs {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	ctx, cancel := context.WithCancel(ctx)
+func startNewOrderBookBaseWs(symbolType cex.SymbolType, logger *slog.Logger) (ws *orderBookBaseWs, err error) {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 	logger = logger.With("bnc_ob_base_clt", symbolType)
 	wsCfg := DefaultPublicWsCfg(symbolType)
 	wsCfg.MaxStream = maxObWsStream
-	wsCfg.FanoutTimerDur = 0
-	ws := NewRawWsClient(ctx, wsCfg, logger)
+	raw, err := StartNewRawWs(wsCfg, logger)
+	if err != nil {
+		return
+	}
 	radio := props.NewRadio(
 		// props.WithFanoutDur[ob.Data](time.Second),
 		props.WithFanoutLogger[ob.Data](logger),
 		props.WithFanoutChCap[ob.Data](10000),
 	)
-	clt := &orderBookBaseWs{
+	ctx, cancel := context.WithCancel(context.Background())
+	ws = &orderBookBaseWs{
 		ctx:       ctx,
 		cancel:    cancel,
 		sybType:   symbolType,
 		obGetter:  defaultObGetter(symbolType),
 		obUpdater: defaultObUpdater(symbolType),
-		ws:        ws,
-		rawMsgCh:  ws.Sub(),
+		rawWs:     raw,
 		_cache:    props.NewSafeRWMap[string, []WsDepthMsg](),
 		_exist:    props.NewSafeRWMap[string, bool](),
 		_ods:      props.NewSafeRWMap[string, ob.Data](),
@@ -256,8 +258,8 @@ func newOrderBookBaseWs(ctx context.Context, symbolType cex.SymbolType, logger *
 		radio:     radio,
 		logger:    logger,
 	}
-	clt.run()
-	return clt
+	ws.run()
+	return
 }
 
 func (oc *orderBookBaseWs) symbolType() cex.SymbolType {
@@ -314,11 +316,11 @@ func (oc *orderBookBaseWs) sub(symbols ...string) (unsubed []string, err error) 
 		}
 	}()
 	params := oc.createSubParams(symbols...)
-	res, err := oc.ws.SubStream(params...)
+	res, err := oc.rawWs.Sub(params...)
 	if err == nil {
 		return
 	}
-	for _, p := range res.UnsubedParams {
+	for _, p := range res.UnsubedStreams {
 		for _, s := range symbols {
 			if strings.Contains(p, strings.ToLower(s)) {
 				unsubed = append(unsubed, s)
@@ -331,7 +333,7 @@ func (oc *orderBookBaseWs) sub(symbols ...string) (unsubed []string, err error) 
 
 func (oc *orderBookBaseWs) unsub(symbols ...string) (err error) {
 	params := oc.createSubParams(symbols...)
-	err = oc.ws.UnsubStream(params...)
+	_, err = oc.rawWs.Unsub(params...)
 	if err != nil {
 		return err
 	}
@@ -356,18 +358,22 @@ func (oc *orderBookBaseWs) run() {
 	go oc.listener()
 }
 
+func (oc *orderBookBaseWs) close() {
+	oc.cancel()
+	oc.rawWs.Close()
+}
+
 func (oc *orderBookBaseWs) listener() {
 	for {
-		select {
-		case msg := <-oc.rawMsgCh:
-			oc.handle(msg)
-		case <-oc.ctx.Done():
+		msg := oc.rawWs.Wait()
+		if errors.Is(msg.Err, ErrWsClientClosed) {
 			return
 		}
+		oc.handle(msg)
 	}
 }
 
-func (oc *orderBookBaseWs) handle(msg RawWsClientMsg) {
+func (oc *orderBookBaseWs) handle(msg RawWsMsg) {
 	data := msg.Data
 	err := msg.Err
 	if err != nil {
@@ -380,7 +386,8 @@ func (oc *orderBookBaseWs) handle(msg RawWsClientMsg) {
 		go oc.broadcastObs(oc.makeAllEmptyObs(err))
 		return
 	}
-	if m.EventType == WsEDepthUpdate {
+	e := m.EventType
+	if e == WsEDepthUpdate {
 		defer func() {
 			if err := recover(); err != nil {
 				oc.logger.Error("bnc: panic in ob ws msg handler", "err", err)
@@ -392,12 +399,17 @@ func (oc *orderBookBaseWs) handle(msg RawWsClientMsg) {
 		}
 		return
 	}
-	if string(data) == "{\"result\":null,\"id\":\"1\"}" ||
-		string(data) == "{\"result\":null,\"id\":1}" {
-		// this means subscribe success
+	if e != "" {
+		// should not happen
+		oc.logger.Error("unhandled ob ws msg", "msg", string(data))
 		return
 	}
-	oc.logger.Warn("bnc: unexpected ob ws msg, unknown event type", "msg", string(data))
+	var resp WsResp[any]
+	if err := json.Unmarshal(data, &resp); err == nil && resp.Error != nil {
+		oc.broadcastObs(oc.makeAllEmptyObs(fmt.Errorf("bnc: %d %s", resp.Error.Code, resp.Error.Msg)))
+		return
+	}
+	oc.logger.Warn("unhandled ob ws msg", "msg", string(data))
 }
 
 func (oc *orderBookBaseWs) worker(ch chan WsDepthMsg) {
@@ -463,7 +475,7 @@ func (oc *orderBookBaseWs) update(depthData WsDepthMsg) (od ob.Data, updated boo
 			return oc.newObWithErr(symbol, ErrCachingObDepthUpdate), false
 		}
 		if !publicRestLimitter.TryWait() {
-			return oc.newObWithErr(symbol, ErrObQueryLimit), true
+			return oc.newObWithErr(symbol, ErrObQueryLimit), false
 		}
 		err = oc.queryOb(symbol)
 		if err != nil {
@@ -529,13 +541,6 @@ func (oc *orderBookBaseWs) needQueryOb(symbol string) bool {
 }
 
 func (oc *orderBookBaseWs) queryOb(symbol string) error {
-	// oldCache := oc._cache.GetV(symbol)
-	// if len(oldCache) < 10 {
-	// 	return ErrCachingObDepthUpdate
-	// }
-	// if time.Now().UnixMilli()-lastObQueryFailTsMilli.Get() < 3000 {
-	// 	return errors.New("bnc: can not query orderbook within 3000 milliseconds")
-	// }
 	if oc._exist.SetKV(symbol, true) {
 		return errors.New("bnc: lock to query orderbook")
 	}
@@ -547,7 +552,6 @@ func (oc *orderBookBaseWs) queryOb(symbol string) error {
 		Limit:  1000,
 	})
 	if err != nil {
-		// lastObQueryFailTsMilli.Set(time.Now().UnixMilli())
 		return err
 	}
 	obData := ob.Data{
