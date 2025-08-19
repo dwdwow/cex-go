@@ -53,8 +53,8 @@ var spotSymbols200 = []string{
 	"XRPUSDT", "ETHUSDT", "BTCUSDT", "LINKUSDT", "ADAUSDT",
 }
 
-func TestKlineBaseWsClient(t *testing.T) {
-	clt := newKlineBaseWsClient(context.Background(), cex.SYMBOL_TYPE_SPOT, slog.Default())
+func TestKlineBaseWs(t *testing.T) {
+	clt := newKlineBaseWs(context.Background(), cex.SYMBOL_TYPE_UM_FUTURES, slog.Default())
 	unsubed, err := clt.sub(KLINE_INTERVAL_1m, spotSymbols200[:20]...)
 	if err != nil {
 		t.Fatal(err, len(unsubed), unsubed)
@@ -96,5 +96,96 @@ func TestKlineBaseWsClient(t *testing.T) {
 	}
 	time.Sleep(time.Second * 10)
 	clt.removeCh(ch2)
+	time.Sleep(time.Second * 10)
+}
+
+func TestKlineWs(t *testing.T) {
+	clt := NewKlineWs(context.Background(), slog.Default())
+	unsubed, err := clt.Sub(
+		cex.SYMBOL_TYPE_SPOT,
+		KLINE_INTERVAL_1m,
+		spotSymbols200...,
+	)
+	if err != nil {
+		t.Fatal(err, len(unsubed), unsubed)
+	}
+	unsubed, err = clt.Sub(
+		cex.SYMBOL_TYPE_UM_FUTURES,
+		KLINE_INTERVAL_1m,
+		spotSymbols200...,
+	)
+	if err != nil {
+		t.Fatal(err, len(unsubed), unsubed)
+	}
+	ch1, err := clt.NewCh(cex.SYMBOL_TYPE_SPOT, "BTCUSDT", KLINE_INTERVAL_1m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ch2, err := clt.NewCh(cex.SYMBOL_TYPE_UM_FUTURES, "BTCUSDT", KLINE_INTERVAL_1m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ch3, err := clt.NewCh(cex.SYMBOL_TYPE_SPOT, "ETHUSDT", KLINE_INTERVAL_1m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ch4, err := clt.NewCh(cex.SYMBOL_TYPE_UM_FUTURES, "ETHUSDT", KLINE_INTERVAL_1m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		for msg := range ch1 {
+			if msg.Err != nil {
+				fmt.Println(msg.SymbolType, msg.Kline.Symbol, msg.Kline.Interval, msg.Err)
+				continue
+			}
+			fmt.Println(msg.SymbolType, msg.Kline.Symbol, msg.Kline.Interval, msg.Kline.ClosePrice)
+		}
+		fmt.Println("ch1 done", cex.SYMBOL_TYPE_SPOT, "BTCUSDT", KLINE_INTERVAL_1m)
+	}()
+	go func() {
+		for msg := range ch2 {
+			if msg.Err != nil {
+				fmt.Println(msg.SymbolType, msg.Kline.Symbol, msg.Kline.Interval, msg.Err)
+				continue
+			}
+			fmt.Println(msg.SymbolType, msg.Kline.Symbol, msg.Kline.Interval, msg.Kline.ClosePrice)
+		}
+		fmt.Println("ch2 done", cex.SYMBOL_TYPE_UM_FUTURES, "BTCUSDT", KLINE_INTERVAL_1m)
+	}()
+	go func() {
+		for msg := range ch3 {
+			if msg.Err != nil {
+				fmt.Println(msg.SymbolType, msg.Kline.Symbol, msg.Kline.Interval, msg.Err)
+				continue
+			}
+			fmt.Println(msg.SymbolType, msg.Kline.Symbol, msg.Kline.Interval, msg.Kline.ClosePrice)
+		}
+		fmt.Println("ch3 done", cex.SYMBOL_TYPE_SPOT, "ETHUSDT", KLINE_INTERVAL_1m)
+	}()
+	go func() {
+		for msg := range ch4 {
+			if msg.Err != nil {
+				fmt.Println(msg.SymbolType, msg.Kline.Symbol, msg.Kline.Interval, msg.Err)
+				continue
+			}
+			fmt.Println(msg.SymbolType, msg.Kline.Symbol, msg.Kline.Interval, msg.Kline.ClosePrice)
+		}
+		fmt.Println("ch4 done", cex.SYMBOL_TYPE_UM_FUTURES, "ETHUSDT", KLINE_INTERVAL_1m)
+	}()
+	time.Sleep(time.Second * 10)
+	err = clt.Unsub(cex.SYMBOL_TYPE_SPOT, KLINE_INTERVAL_1m, "BTCUSDT")
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second * 10)
+	clt.RemoveCh(ch2)
+	time.Sleep(time.Second * 10)
+	err = clt.Unsub(cex.SYMBOL_TYPE_UM_FUTURES, KLINE_INTERVAL_1m, "ETHUSDT")
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second * 10)
+	clt.RemoveCh(ch3)
 	time.Sleep(time.Second * 10)
 }

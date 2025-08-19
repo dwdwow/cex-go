@@ -10,7 +10,7 @@ import (
 )
 
 func TestOrderbookClient(t *testing.T) {
-	clt := NewOrderBookClient(context.Background(), nil)
+	clt := NewOrderBookWs(context.Background(), nil)
 	clt.Sub(cex.SYMBOL_TYPE_SPOT, "BTCUSDT", "ETHUSDT", "SOLUSDT")
 	clt.Sub(cex.SYMBOL_TYPE_UM_FUTURES, "BTCUSDT", "ETHUSDT", "SOLUSDT")
 	ch1, err := clt.NewCh(cex.SYMBOL_TYPE_UM_FUTURES, "BTCUSDT")
@@ -133,7 +133,7 @@ func TestOrderbookClient(t *testing.T) {
 }
 
 func TestOrderbookClient2(t *testing.T) {
-	clt := NewOrderBookClient(context.Background(), nil)
+	clt := NewOrderBookWs(context.Background(), nil)
 	symbols := []string{
 		"BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",
 		"ADAUSDT", "DOGEUSDT", "MATICUSDT", "DOTUSDT", "LTCUSDT",
@@ -247,7 +247,7 @@ func TestOrderbookClient2(t *testing.T) {
 }
 
 func TestOrderbookBaseClient(t *testing.T) {
-	clt := newOrderBookBaseClient(context.Background(), cex.SYMBOL_TYPE_UM_FUTURES, nil)
+	clt := newOrderBookBaseWs(context.Background(), cex.SYMBOL_TYPE_UM_FUTURES, nil)
 	unsubed, err := clt.subSymbols(
 		"BTCUSDT",
 		"ETHUSDT",

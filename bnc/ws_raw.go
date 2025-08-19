@@ -97,6 +97,12 @@ func (w *RawWsClient) Status() WsClientStatus {
 	return w.status
 }
 
+func (w *RawWsClient) Stream() []string {
+	w.gmu.Lock()
+	defer w.gmu.Unlock()
+	return w.stream
+}
+
 // Close will close the client and cancel the context
 // client can not be restarted after close
 func (w *RawWsClient) Close() {

@@ -18,13 +18,13 @@ import (
 	"github.com/dwdwow/props"
 )
 
-type OrderBookClient struct {
-	spClt *orderBookMergedClient
-	umClt *orderBookMergedClient
-	cmClt *orderBookMergedClient
+type OrderBookWs struct {
+	spClt *orderBookMergedWs
+	umClt *orderBookMergedWs
+	cmClt *orderBookMergedWs
 }
 
-func NewOrderBookClient(ctx context.Context, logger *slog.Logger) *OrderBookClient {
+func NewOrderBookWs(ctx context.Context, logger *slog.Logger) *OrderBookWs {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -32,14 +32,14 @@ func NewOrderBookClient(ctx context.Context, logger *slog.Logger) *OrderBookClie
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 	logger = logger.With("ws", "bnc_ob_clt")
-	return &OrderBookClient{
-		spClt: newOrderBookMergedClient(ctx, cex.SYMBOL_TYPE_SPOT, logger),
-		umClt: newOrderBookMergedClient(ctx, cex.SYMBOL_TYPE_UM_FUTURES, logger),
-		cmClt: newOrderBookMergedClient(ctx, cex.SYMBOL_TYPE_CM_FUTURES, logger),
+	return &OrderBookWs{
+		spClt: newOrderBookMergedWs(ctx, cex.SYMBOL_TYPE_SPOT, logger),
+		umClt: newOrderBookMergedWs(ctx, cex.SYMBOL_TYPE_UM_FUTURES, logger),
+		cmClt: newOrderBookMergedWs(ctx, cex.SYMBOL_TYPE_CM_FUTURES, logger),
 	}
 }
 
-func (oc *OrderBookClient) Sub(symbolType cex.SymbolType, symbols ...string) (unsubed []string, err error) {
+func (oc *OrderBookWs) Sub(symbolType cex.SymbolType, symbols ...string) (unsubed []string, err error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
 		return oc.spClt.subSymbols(symbols...)
@@ -51,7 +51,7 @@ func (oc *OrderBookClient) Sub(symbolType cex.SymbolType, symbols ...string) (un
 	return nil, errors.New("bnc: unknown symbol type")
 }
 
-func (oc *OrderBookClient) Unsub(symbolType cex.SymbolType, symbols ...string) (err error) {
+func (oc *OrderBookWs) Unsub(symbolType cex.SymbolType, symbols ...string) (err error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
 		return oc.spClt.unsubSymbols(symbols...)
@@ -63,7 +63,7 @@ func (oc *OrderBookClient) Unsub(symbolType cex.SymbolType, symbols ...string) (
 	return errors.New("bnc: unknown symbol type")
 }
 
-func (oc *OrderBookClient) NewCh(symbolType cex.SymbolType, symbol string) (ch <-chan ob.Data, err error) {
+func (oc *OrderBookWs) NewCh(symbolType cex.SymbolType, symbol string) (ch <-chan ob.Data, err error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
 		return oc.spClt.newCh(symbol)
@@ -75,13 +75,13 @@ func (oc *OrderBookClient) NewCh(symbolType cex.SymbolType, symbol string) (ch <
 	return nil, errors.New("bnc: unknown symbol type")
 }
 
-func (oc *OrderBookClient) RemoveCh(ch <-chan ob.Data) {
+func (oc *OrderBookWs) RemoveCh(ch <-chan ob.Data) {
 	oc.spClt.removeCh(ch)
 	oc.umClt.removeCh(ch)
 	oc.cmClt.removeCh(ch)
 }
 
-type orderBookMergedClient struct {
+type orderBookMergedWs struct {
 	mu sync.Mutex
 
 	ctx    context.Context
@@ -89,13 +89,13 @@ type orderBookMergedClient struct {
 
 	symbolType cex.SymbolType
 
-	clts []*orderBookBaseClient
-	sybs *props.SafeRWMap[string, *orderBookBaseClient]
+	clts []*orderBookBaseWs
+	sybs *props.SafeRWMap[string, *orderBookBaseWs]
 
 	logger *slog.Logger
 }
 
-func newOrderBookMergedClient(ctx context.Context, symbolType cex.SymbolType, logger *slog.Logger) *orderBookMergedClient {
+func newOrderBookMergedWs(ctx context.Context, symbolType cex.SymbolType, logger *slog.Logger) *orderBookMergedWs {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -104,16 +104,16 @@ func newOrderBookMergedClient(ctx context.Context, symbolType cex.SymbolType, lo
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 	logger = logger.With("bnc_ob_merged_clt", symbolType)
-	return &orderBookMergedClient{
+	return &orderBookMergedWs{
 		ctx:        ctx,
 		cancel:     cancel,
 		symbolType: symbolType,
-		sybs:       props.NewSafeRWMap[string, *orderBookBaseClient](),
+		sybs:       props.NewSafeRWMap[string, *orderBookBaseWs](),
 		logger:     logger,
 	}
 }
 
-func (oc *orderBookMergedClient) scanAllSymbols() {
+func (oc *orderBookMergedWs) scanAllSymbols() {
 	for _, clt := range oc.clts {
 		for _, s := range clt.workers.Keys() {
 			oc.sybs.SetIfNotExists(s, clt)
@@ -121,7 +121,7 @@ func (oc *orderBookMergedClient) scanAllSymbols() {
 	}
 }
 
-func (oc *orderBookMergedClient) subSymbols(symbols ...string) (unsubed []string, err error) {
+func (oc *orderBookMergedWs) subSymbols(symbols ...string) (unsubed []string, err error) {
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
 	defer oc.scanAllSymbols()
@@ -144,7 +144,7 @@ func (oc *orderBookMergedClient) subSymbols(symbols ...string) (unsubed []string
 		if len(unsubed) == 0 {
 			return
 		}
-		clt := newOrderBookBaseClient(oc.ctx, oc.symbolType, oc.logger)
+		clt := newOrderBookBaseWs(oc.ctx, oc.symbolType, oc.logger)
 		unsubed, err = clt.subSymbols(unsubed...)
 		if err != nil && err != ErrNotAllStreamSubed {
 			oc.logger.Error("bnc: sub symbols failed", "err", err)
@@ -154,7 +154,7 @@ func (oc *orderBookMergedClient) subSymbols(symbols ...string) (unsubed []string
 	}
 }
 
-func (oc *orderBookMergedClient) unsubSymbols(symbols ...string) (err error) {
+func (oc *orderBookMergedWs) unsubSymbols(symbols ...string) (err error) {
 	oc.mu.Lock()
 	defer oc.mu.Unlock()
 	defer oc.scanAllSymbols()
@@ -173,7 +173,7 @@ func (oc *orderBookMergedClient) unsubSymbols(symbols ...string) (err error) {
 // newCh will return a channel that will receive the ob data
 // if symbol is not found, ok will be false,
 // should subscribe the symbol first
-func (oc *orderBookMergedClient) newCh(symbol string) (ch <-chan ob.Data, err error) {
+func (oc *orderBookMergedWs) newCh(symbol string) (ch <-chan ob.Data, err error) {
 	clt, ok := oc.sybs.GetVWithOk(symbol)
 	if !ok {
 		return nil, errors.New("bnc: symbol not found")
@@ -181,7 +181,7 @@ func (oc *orderBookMergedClient) newCh(symbol string) (ch <-chan ob.Data, err er
 	return clt.newCh(symbol), nil
 }
 
-func (oc *orderBookMergedClient) removeCh(ch <-chan ob.Data) {
+func (oc *orderBookMergedWs) removeCh(ch <-chan ob.Data) {
 	for _, clt := range oc.clts {
 		clt.removeCh(ch)
 	}
@@ -201,7 +201,7 @@ func defaultObGetter(symbolType cex.SymbolType) obGetter {
 	panic("bnc: unknown symbol type")
 }
 
-type orderBookBaseClient struct {
+type orderBookBaseWs struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -223,7 +223,7 @@ type orderBookBaseClient struct {
 	logger *slog.Logger
 }
 
-func newOrderBookBaseClient(ctx context.Context, symbolType cex.SymbolType, logger *slog.Logger) *orderBookBaseClient {
+func newOrderBookBaseWs(ctx context.Context, symbolType cex.SymbolType, logger *slog.Logger) *orderBookBaseWs {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -241,7 +241,7 @@ func newOrderBookBaseClient(ctx context.Context, symbolType cex.SymbolType, logg
 		props.WithFanoutLogger[ob.Data](logger),
 		props.WithFanoutChCap[ob.Data](10000),
 	)
-	clt := &orderBookBaseClient{
+	clt := &orderBookBaseWs{
 		ctx:       ctx,
 		cancel:    cancel,
 		sybType:   symbolType,
@@ -260,43 +260,43 @@ func newOrderBookBaseClient(ctx context.Context, symbolType cex.SymbolType, logg
 	return clt
 }
 
-func (oc *orderBookBaseClient) symbolType() cex.SymbolType {
+func (oc *orderBookBaseWs) symbolType() cex.SymbolType {
 	return oc.sybType
 }
 
-func (oc *orderBookBaseClient) cache() *props.SafeRWMap[string, []WsDepthMsg] {
+func (oc *orderBookBaseWs) cache() *props.SafeRWMap[string, []WsDepthMsg] {
 	return oc._cache
 }
 
-func (oc *orderBookBaseClient) exist() *props.SafeRWMap[string, bool] {
+func (oc *orderBookBaseWs) exist() *props.SafeRWMap[string, bool] {
 	return oc._exist
 }
 
-func (oc *orderBookBaseClient) ods() *props.SafeRWMap[string, ob.Data] {
+func (oc *orderBookBaseWs) ods() *props.SafeRWMap[string, ob.Data] {
 	return oc._ods
 }
 
 // subSymbols will subscribe to new symbols
 // symbol is case insensitive
-func (oc *orderBookBaseClient) subSymbols(symbols ...string) (unsubed []string, err error) {
+func (oc *orderBookBaseWs) subSymbols(symbols ...string) (unsubed []string, err error) {
 	return oc.sub(symbols...)
 }
 
-func (oc *orderBookBaseClient) unsubSymbols(symbols ...string) (err error) {
+func (oc *orderBookBaseWs) unsubSymbols(symbols ...string) (err error) {
 	return oc.unsub(symbols...)
 }
 
 // newCh will return a channel that will receive the ob data
 // symbol is case insensitive
-func (oc *orderBookBaseClient) newCh(symbol string) <-chan ob.Data {
+func (oc *orderBookBaseWs) newCh(symbol string) <-chan ob.Data {
 	return oc.radio.Sub(symbol)
 }
 
-func (oc *orderBookBaseClient) removeCh(ch <-chan ob.Data) {
+func (oc *orderBookBaseWs) removeCh(ch <-chan ob.Data) {
 	oc.radio.UnsubAll(ch)
 }
 
-func (oc *orderBookBaseClient) createSubParams(symbols ...string) []string {
+func (oc *orderBookBaseWs) createSubParams(symbols ...string) []string {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, strings.ToLower(symbol)+"@depth@100ms")
@@ -304,7 +304,7 @@ func (oc *orderBookBaseClient) createSubParams(symbols ...string) []string {
 	return params
 }
 
-func (oc *orderBookBaseClient) sub(symbols ...string) (unsubed []string, err error) {
+func (oc *orderBookBaseWs) sub(symbols ...string) (unsubed []string, err error) {
 	defer func() {
 		// create new worker for new symbols
 		for _, s := range symbols {
@@ -329,7 +329,7 @@ func (oc *orderBookBaseClient) sub(symbols ...string) (unsubed []string, err err
 	return unsubed, err
 }
 
-func (oc *orderBookBaseClient) unsub(symbols ...string) (err error) {
+func (oc *orderBookBaseWs) unsub(symbols ...string) (err error) {
 	params := oc.createSubParams(symbols...)
 	err = oc.ws.UnsubStream(params...)
 	if err != nil {
@@ -352,11 +352,11 @@ func (oc *orderBookBaseClient) unsub(symbols ...string) (err error) {
 	return nil
 }
 
-func (oc *orderBookBaseClient) run() {
+func (oc *orderBookBaseWs) run() {
 	go oc.listener()
 }
 
-func (oc *orderBookBaseClient) listener() {
+func (oc *orderBookBaseWs) listener() {
 	for {
 		select {
 		case msg := <-oc.rawMsgCh:
@@ -367,7 +367,7 @@ func (oc *orderBookBaseClient) listener() {
 	}
 }
 
-func (oc *orderBookBaseClient) handle(msg RawWsClientMsg) {
+func (oc *orderBookBaseWs) handle(msg RawWsClientMsg) {
 	data := msg.Data
 	err := msg.Err
 	if err != nil {
@@ -400,7 +400,7 @@ func (oc *orderBookBaseClient) handle(msg RawWsClientMsg) {
 	oc.logger.Warn("bnc: unexpected ob ws msg, unknown event type", "msg", string(data))
 }
 
-func (oc *orderBookBaseClient) worker(ch chan WsDepthMsg) {
+func (oc *orderBookBaseWs) worker(ch chan WsDepthMsg) {
 	for {
 		select {
 		case data, ok := <-ch:
@@ -421,7 +421,7 @@ func (oc *orderBookBaseClient) worker(ch chan WsDepthMsg) {
 	}
 }
 
-func (oc *orderBookBaseClient) newWorker(symbol string) {
+func (oc *orderBookBaseWs) newWorker(symbol string) {
 	oc.workers.SetIfNotExists(symbol, func() chan WsDepthMsg {
 		ch := make(chan WsDepthMsg, 10000)
 		go oc.worker(ch)
@@ -429,7 +429,7 @@ func (oc *orderBookBaseClient) newWorker(symbol string) {
 	}())
 }
 
-func (oc *orderBookBaseClient) makeAllEmptyObs(err error) []ob.Data {
+func (oc *orderBookBaseWs) makeAllEmptyObs(err error) []ob.Data {
 	symbols := oc._exist.Keys()
 	var obs []ob.Data
 	for _, symbol := range symbols {
@@ -441,7 +441,7 @@ func (oc *orderBookBaseClient) makeAllEmptyObs(err error) []ob.Data {
 	return obs
 }
 
-func (oc *orderBookBaseClient) broadcastObs(obs []ob.Data) {
+func (oc *orderBookBaseWs) broadcastObs(obs []ob.Data) {
 	for _, o := range obs {
 		if o.Err == ErrCachingObDepthUpdate {
 			continue
@@ -450,7 +450,7 @@ func (oc *orderBookBaseClient) broadcastObs(obs []ob.Data) {
 	}
 }
 
-func (oc *orderBookBaseClient) update(depthData WsDepthMsg) (od ob.Data, updated bool) {
+func (oc *orderBookBaseWs) update(depthData WsDepthMsg) (od ob.Data, updated bool) {
 	symbol := depthData.Symbol
 	err := oc.cacheRawData(depthData)
 	if err != nil {
@@ -475,14 +475,14 @@ func (oc *orderBookBaseClient) update(depthData WsDepthMsg) (od ob.Data, updated
 	return od, true
 }
 
-func (oc *orderBookBaseClient) newObWithErr(symbol string, err error) ob.Data {
+func (oc *orderBookBaseWs) newObWithErr(symbol string, err error) ob.Data {
 	empty := ob.NewData(cex.BINANCE, oc.sybType, symbol)
 	empty.SetErr(err)
 	oc._ods.SetKV(symbol, empty)
 	return empty
 }
 
-func (oc *orderBookBaseClient) cacheRawData(depthData WsDepthMsg) error {
+func (oc *orderBookBaseWs) cacheRawData(depthData WsDepthMsg) error {
 	symbol := depthData.Symbol
 	oldCache := oc._cache.GetV(symbol)
 	if len(oldCache) > 1000 {
@@ -523,12 +523,12 @@ func (oc *orderBookBaseClient) cacheRawData(depthData WsDepthMsg) error {
 	return nil
 }
 
-func (oc *orderBookBaseClient) needQueryOb(symbol string) bool {
+func (oc *orderBookBaseWs) needQueryOb(symbol string) bool {
 	obData, ok := oc._ods.GetVWithOk(symbol)
 	return !ok || obData.Empty()
 }
 
-func (oc *orderBookBaseClient) queryOb(symbol string) error {
+func (oc *orderBookBaseWs) queryOb(symbol string) error {
 	// oldCache := oc._cache.GetV(symbol)
 	// if len(oldCache) < 10 {
 	// 	return ErrCachingObDepthUpdate
