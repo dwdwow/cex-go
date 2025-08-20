@@ -128,7 +128,7 @@ func TestOrderbookClient(t *testing.T) {
 	clt.Unsub(cex.SYMBOL_TYPE_SPOT, "ETHUSDT", "SOLUSDT")
 	time.Sleep(time.Second * 10)
 	clt.RemoveCh(ch4)
-	select {}
+	time.Sleep(time.Second * 10)
 }
 
 func TestOrderbookClient2(t *testing.T) {
@@ -250,7 +250,7 @@ func TestOrderbookBaseClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	unsubed, err := clt.subSymbols(
+	unsubed, err := clt.sub(
 		"BTCUSDT",
 		"ETHUSDT",
 		"SOLUSDT",
@@ -311,7 +311,7 @@ func TestOrderbookBaseClient(t *testing.T) {
 	ch3 := clt.newCh("SOLUSDT")
 	go func() {
 		time.Sleep(time.Second * 10)
-		clt.unsubSymbols("BTCUSDT")
+		clt.unsub("BTCUSDT")
 		time.Sleep(time.Second * 10)
 		clt.removeCh(ch2)
 	}()

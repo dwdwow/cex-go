@@ -32,12 +32,24 @@ func (w *PublicWs) SubKlines(sybType cex.SymbolType, interval KlineInterval, sym
 	return w.klClt.Sub(sybType, interval, symbols...)
 }
 
+func (w *PublicWs) UnsubKlines(sybType cex.SymbolType, interval KlineInterval, symbols ...string) (err error) {
+	return w.klClt.Unsub(sybType, interval, symbols...)
+}
+
 func (w *PublicWs) SubAggTrades(sybType cex.SymbolType, symbols ...string) (unsubed []string, err error) {
 	return w.agClt.Sub(sybType, symbols...)
 }
 
+func (w *PublicWs) UnsubAggTrades(sybType cex.SymbolType, symbols ...string) (err error) {
+	return w.agClt.Unsub(sybType, symbols...)
+}
+
 func (w *PublicWs) SubOrderBooks(sybType cex.SymbolType, symbols ...string) (unsubed []string, err error) {
 	return w.obClt.Sub(sybType, symbols...)
+}
+
+func (w *PublicWs) UnsubOrderBooks(sybType cex.SymbolType, symbols ...string) (err error) {
+	return w.obClt.Unsub(sybType, symbols...)
 }
 
 func (w *PublicWs) NewKlineCh(sybType cex.SymbolType, interval KlineInterval, symbol string) (ch <-chan KlineMsg, err error) {

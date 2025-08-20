@@ -129,7 +129,7 @@ func (oc *orderBookMergedWs) subSymbols(symbols ...string) (unsubed []string, er
 		if len(unsubed) == 0 {
 			return
 		}
-		unsubed, err = clt.subSymbols(unsubed...)
+		unsubed, err = clt.sub(unsubed...)
 		if err != nil && err != ErrNotAllStreamSubed {
 			oc.logger.Error("bnc: sub symbols failed", "err", err)
 			return
@@ -145,7 +145,7 @@ func (oc *orderBookMergedWs) subSymbols(symbols ...string) (unsubed []string, er
 			oc.logger.Error("bnc: start new order book base ws failed", "err", err)
 			return
 		}
-		unsubed, err = clt.subSymbols(unsubed...)
+		unsubed, err = clt.sub(unsubed...)
 		if err != nil && err != ErrNotAllStreamSubed {
 			oc.logger.Error("bnc: sub symbols failed", "err", err)
 			return
@@ -161,7 +161,7 @@ func (oc *orderBookMergedWs) unsubSymbols(symbols ...string) (err error) {
 	for _, s := range symbols {
 		clt, ok := oc.sybs.GetVWithOk(s)
 		if ok {
-			err = clt.unsubSymbols(s)
+			err = clt.unsub(s)
 			if err != nil {
 				return
 			}
@@ -278,16 +278,6 @@ func (oc *orderBookBaseWs) ods() *props.SafeRWMap[string, ob.Data] {
 	return oc._ods
 }
 
-// subSymbols will subscribe to new symbols
-// symbol is case insensitive
-func (oc *orderBookBaseWs) subSymbols(symbols ...string) (unsubed []string, err error) {
-	return oc.sub(symbols...)
-}
-
-func (oc *orderBookBaseWs) unsubSymbols(symbols ...string) (err error) {
-	return oc.unsub(symbols...)
-}
-
 // newCh will return a channel that will receive the ob data
 // symbol is case insensitive
 func (oc *orderBookBaseWs) newCh(symbol string) <-chan ob.Data {
@@ -306,6 +296,8 @@ func (oc *orderBookBaseWs) createSubParams(symbols ...string) []string {
 	return params
 }
 
+// subSymbols will subscribe to new symbols
+// symbol is case insensitive
 func (oc *orderBookBaseWs) sub(symbols ...string) (unsubed []string, err error) {
 	defer func() {
 		// create new worker for new symbols
@@ -555,13 +547,14 @@ func (oc *orderBookBaseWs) queryOb(symbol string) error {
 		return err
 	}
 	obData := ob.Data{
-		Cex:     cex.BINANCE,
-		Type:    oc.sybType,
-		Symbol:  symbol,
-		Version: strconv.FormatInt(rawOrderbook.LastUpdateID, 10),
-		Time:    time.Now().UnixMilli(),
-		Asks:    rawOrderbook.Asks,
-		Bids:    rawOrderbook.Bids,
+		Cex:        cex.BINANCE,
+		Type:       oc.sybType,
+		Symbol:     symbol,
+		Version:    strconv.FormatInt(rawOrderbook.LastUpdateID, 10),
+		Time:       rawOrderbook.EventTime,
+		UpdateTime: time.Now().UnixNano(),
+		Asks:       rawOrderbook.Asks,
+		Bids:       rawOrderbook.Bids,
 	}
 	oc._ods.SetKV(symbol, obData)
 	return nil

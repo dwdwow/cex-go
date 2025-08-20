@@ -9,10 +9,10 @@ import (
 
 func NewData(cexName cex.CexName, obType cex.SymbolType, symbol string) Data {
 	return Data{
-		Cex:    cexName,
-		Type:   obType,
-		Symbol: symbol,
-		Time:   time.Now().UnixMilli(),
+		Cex:        cexName,
+		Type:       obType,
+		Symbol:     symbol,
+		UpdateTime: time.Now().UnixNano(),
 	}
 }
 

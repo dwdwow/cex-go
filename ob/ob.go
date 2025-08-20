@@ -35,14 +35,18 @@ func (b Book) Copy() Book {
 }
 
 type Data struct {
-	Cex     cex.CexName    `json:"cex" bson:"cex"`
-	Type    cex.SymbolType `json:"type" bson:"type"`
-	Symbol  string         `json:"symbol" bson:"symbol"`
-	Version string         `json:"version" bson:"version"`
-	Time    int64          `json:"time" bson:"time"`
-	Asks    Book           `json:"asks" bson:"asks"`
-	Bids    Book           `json:"bids" bson:"bids"`
-	Err     error          `json:"err" bson:"err"`
+	Cex     cex.CexName    `json:"c" bson:"c"`
+	Type    cex.SymbolType `json:"st" bson:"st"`
+	Symbol  string         `json:"s" bson:"s"`
+	Version string         `json:"v" bson:"v"`
+	// Time is the cex event time
+	Time int64 `json:"t" bson:"t"`
+	// UpdateTime is the time of the latest data update
+	// use nanoseconds
+	UpdateTime int64 `json:"ut" bson:"ut"`
+	Asks       Book  `json:"a" bson:"a"`
+	Bids       Book  `json:"b" bson:"b"`
+	Err        error `json:"e" bson:"e"`
 }
 
 func (o *Data) Copy() *Data {
@@ -58,7 +62,7 @@ func (o *Data) SetErr(err error) {
 	o.Asks = Book{}
 	o.Bids = Book{}
 	o.Err = err
-	o.Time = time.Now().UnixMilli()
+	o.UpdateTime = time.Now().UnixNano()
 }
 
 func (o *Data) SetBook(ask bool, book Book, version string) {
@@ -72,13 +76,13 @@ func (o *Data) SetBook(ask bool, book Book, version string) {
 func (o *Data) SetAskBook(askBook Book, version string) {
 	o.Asks = askBook
 	o.Version = version
-	o.Time = time.Now().UnixMilli()
+	o.UpdateTime = time.Now().UnixNano()
 }
 
 func (o *Data) SetBidBook(bidBook Book, version string) {
 	o.Bids = bidBook
 	o.Version = version
-	o.Time = time.Now().UnixMilli()
+	o.UpdateTime = time.Now().UnixNano()
 }
 
 func (o *Data) UpdateDeltas(ask bool, delta Book, version string) error {
@@ -123,7 +127,7 @@ func (o *Data) updateDeltas(newData Book, isAsk bool, version string) error {
 		}
 	}
 	o.Version = version
-	o.Time = time.Now().UnixMilli()
+	o.UpdateTime = time.Now().UnixNano()
 	return nil
 }
 
