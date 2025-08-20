@@ -329,7 +329,7 @@ func (clt *aggTradeBaseWs) listener() {
 			clt.radio.BroadcastAll(aggTradeMsg)
 			continue
 		}
-		clt.logger.Error("unhandled ag trade ws msg", "msg", string(msg.Data))
+		clt.logger.Warn("unhandled ag trade ws msg", "msg", string(msg.Data))
 	}
 }
 
