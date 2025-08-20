@@ -8,7 +8,7 @@ import (
 
 // var lastObQueryFailTsMilli = props.SafeRWData[int64]{}
 
-var publicRestLimitter = limiter.New(time.Second, 2)
+var publicRestLimitter = limiter.New(time.Second, 1)
 
 const maxObWsStream = 30
 const maxWsChCap = 10000

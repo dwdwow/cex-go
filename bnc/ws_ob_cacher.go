@@ -10,11 +10,9 @@ import (
 	"time"
 
 	"github.com/dwdwow/cex-go"
-	"github.com/dwdwow/limiter-go"
 )
 
 func CacheDepthUpdate(dataDir string, symbolType cex.SymbolType, symbols ...string) {
-	lim := limiter.New(time.Second, 1)
 	slog.Info("bnc: cache orderbook", "dataDir", dataDir, "symbolType", symbolType, "symbols", symbols)
 	err := os.MkdirAll(dataDir, 0777)
 	if err != nil {
@@ -40,7 +38,7 @@ func CacheDepthUpdate(dataDir string, symbolType cex.SymbolType, symbols ...stri
 		go func() {
 			go func() {
 				for {
-					lim.Wait(context.Background())
+					publicRestLimitter.Wait(context.Background())
 					o, err := GetOrderbook(symbolType, ParamsOrderBook{
 						Symbol: symbol,
 						Limit:  1000,
