@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"time"
 
 	"github.com/dwdwow/cex-go"
@@ -17,6 +18,9 @@ func main() {
 	var symbols []string
 	for _, pair := range pairs {
 		if !pair.Tradable {
+			continue
+		}
+		if !strings.HasSuffix(pair.Symbol, "USDT") {
 			continue
 		}
 		symbols = append(symbols, pair.Symbol)
@@ -44,6 +48,9 @@ func main() {
 		if !pair.IsPerpetual {
 			continue
 		}
+		if !strings.HasSuffix(pair.Symbol, "USDT") {
+			continue
+		}
 		symbols = append(symbols, pair.Symbol)
 	}
 	// Split symbols into groups of 30 units
@@ -69,6 +76,9 @@ func main() {
 		if !pair.Tradable {
 			continue
 		}
+		if !strings.HasSuffix(pair.Symbol, "USDT") {
+			continue
+		}
 		symbols = append(symbols, pair.Symbol)
 	}
 	// Split symbols into groups of 30 units
@@ -91,6 +101,9 @@ func main() {
 			continue
 		}
 		if !pair.IsPerpetual {
+			continue
+		}
+		if !strings.HasSuffix(pair.Symbol, "USDT") {
 			continue
 		}
 		symbols = append(symbols, pair.Symbol)
