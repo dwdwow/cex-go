@@ -17,12 +17,12 @@ type CexWsMsgHandler interface {
 	Type() cex.SymbolType
 	Client() *wsclt.MergedClient
 	Topics(symbols ...string) []string
-	Handle(wsclt.MergedClientMsg) ([]Data, error)
+	Handle(wsclt.MergedClientMsg) ([]Data[any], error)
 }
 
 type Producer struct {
 	c             CexWsMsgHandler
-	ps            spub.ProducerService[Data]
+	ps            spub.ProducerService[Data[any]]
 	mgClt         *wsclt.MergedClient
 	msgCh         chan wsclt.MergedClientMsg
 	muxChannelMap sync.Mutex
@@ -31,7 +31,7 @@ type Producer struct {
 	logger        *slog.Logger
 }
 
-func NewProducer(c CexWsMsgHandler, producerService spub.ProducerService[Data], logger *slog.Logger) *Producer {
+func NewProducer(c CexWsMsgHandler, producerService spub.ProducerService[Data[any]], logger *slog.Logger) *Producer {
 	msgCh := make(chan wsclt.MergedClientMsg, 1000)
 	mgClt := c.Client().SetMsgCh(msgCh)
 	if logger == nil {

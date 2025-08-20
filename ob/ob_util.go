@@ -15,7 +15,7 @@ func BQ(book Book, pos int) (PQ, error) {
 	return book[pos], nil
 }
 
-func Price(o Data) (float64, error) {
+func Price[N any](o Data[N]) (float64, error) {
 	al := len(o.Asks)
 	bl := len(o.Bids)
 	if al*bl == 0 {
@@ -141,7 +141,7 @@ func QuoteQty(book Book, assetQty float64) float64 {
 
 // AdjustByTakerFee copy raw ob data, and adjust by taker fee
 // if fee >= 1, panic
-func AdjustByTakerFee(rawOb Data, fee float64) Data {
+func AdjustByTakerFee[N any](rawOb Data[N], fee float64) Data[N] {
 	if fee >= 1 {
 		panic("ob: adjust ob data by taker fee, but fee >= 1")
 	}

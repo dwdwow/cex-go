@@ -11,12 +11,12 @@ import (
 )
 
 type Publisher struct {
-	spub.Publisher[Data]
+	spub.Publisher[Data[any]]
 	producer *Producer
 	logger   *slog.Logger
 }
 
-func NewPublisher(publisher spub.Publisher[Data], msgHandler CexWsMsgHandler, logger *slog.Logger) *Publisher {
+func NewPublisher(publisher spub.Publisher[Data[any]], msgHandler CexWsMsgHandler, logger *slog.Logger) *Publisher {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
@@ -25,17 +25,17 @@ func NewPublisher(publisher spub.Publisher[Data], msgHandler CexWsMsgHandler, lo
 }
 
 func NewSimplePublisher(msgHandler CexWsMsgHandler, logger *slog.Logger) *Publisher {
-	publisher := spub.NewSimplePublisher(NewSimplePublisherChannelUtil(), spub.SimpleRcvCapOption[Data](100))
+	publisher := spub.NewSimplePublisher(NewSimplePublisherChannelUtil(), spub.SimpleRcvCapOption[Data[any]](100))
 	return NewPublisher(publisher, msgHandler, logger)
 }
 
 func NewRedisPublisher(rOpts *redis.Options, msgHandler CexWsMsgHandler, logger *slog.Logger) *Publisher {
-	publisher := spub.NewRedisPublisher(rOpts, NewRedisPublisherChannelUtil(), RedisMsgUnmarshal, logger, spub.RedisRcvCapOption[Data](100))
+	publisher := spub.NewRedisPublisher(rOpts, NewRedisPublisherChannelUtil(), RedisMsgUnmarshal, logger, spub.RedisRcvCapOption[Data[any]](100))
 	return NewPublisher(publisher, msgHandler, logger)
 }
 
-func NewRedisConsumer(rOpts *redis.Options, logger *slog.Logger) spub.ConsumerService[Data] {
-	return spub.NewRedisConsumer(rOpts, NewRedisPublisherChannelUtil(), RedisMsgUnmarshal, logger, spub.RedisConsumerRcvCapOption[Data](100))
+func NewRedisConsumer(rOpts *redis.Options, logger *slog.Logger) spub.ConsumerService[Data[any]] {
+	return spub.NewRedisConsumer(rOpts, NewRedisPublisherChannelUtil(), RedisMsgUnmarshal, logger, spub.RedisConsumerRcvCapOption[Data[any]](100))
 }
 
 func (p *Publisher) Start(ctx context.Context) error {

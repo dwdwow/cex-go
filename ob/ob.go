@@ -34,7 +34,7 @@ func (b Book) Copy() Book {
 	return nb.(Book)
 }
 
-type Data struct {
+type Data[N any] struct {
 	Cex     cex.CexName    `json:"c" bson:"c"`
 	Type    cex.SymbolType `json:"st" bson:"st"`
 	Symbol  string         `json:"s" bson:"s"`
@@ -50,28 +50,28 @@ type Data struct {
 	Bids Book `json:"b" bson:"b"`
 
 	// Note is the note of the data
-	Note any `json:"n" bson:"n"`
+	Note N `json:"n,omitempty" bson:"n,omitempty"`
 
 	Err error `json:"e" bson:"e"`
 }
 
-func (o *Data) Copy() *Data {
+func (o *Data[N]) Copy() *Data[N] {
 	no := deepcopy.Copy(o)
-	return no.(*Data)
+	return no.(*Data[N])
 }
 
-func (o *Data) Empty() bool {
+func (o *Data[N]) Empty() bool {
 	return len(o.Asks) == 0 && len(o.Bids) == 0
 }
 
-func (o *Data) SetErr(err error) {
+func (o *Data[N]) SetErr(err error) {
 	o.Asks = Book{}
 	o.Bids = Book{}
 	o.Err = err
 	o.UpdateTime = time.Now().UnixNano()
 }
 
-func (o *Data) SetBook(ask bool, book Book, version string) {
+func (o *Data[N]) SetBook(ask bool, book Book, version string) {
 	if ask {
 		o.SetAskBook(book, version)
 	} else {
@@ -79,19 +79,19 @@ func (o *Data) SetBook(ask bool, book Book, version string) {
 	}
 }
 
-func (o *Data) SetAskBook(askBook Book, version string) {
+func (o *Data[N]) SetAskBook(askBook Book, version string) {
 	o.Asks = askBook
 	o.Version = version
 	o.UpdateTime = time.Now().UnixNano()
 }
 
-func (o *Data) SetBidBook(bidBook Book, version string) {
+func (o *Data[N]) SetBidBook(bidBook Book, version string) {
 	o.Bids = bidBook
 	o.Version = version
 	o.UpdateTime = time.Now().UnixNano()
 }
 
-func (o *Data) UpdateDeltas(ask bool, delta Book, version string) error {
+func (o *Data[N]) UpdateDeltas(ask bool, delta Book, version string) error {
 	if ask {
 		return o.UpdateAskDeltas(delta, version)
 	} else {
@@ -99,15 +99,15 @@ func (o *Data) UpdateDeltas(ask bool, delta Book, version string) error {
 	}
 }
 
-func (o *Data) UpdateAskDeltas(deltaData Book, version string) error {
+func (o *Data[N]) UpdateAskDeltas(deltaData Book, version string) error {
 	return o.updateDeltas(deltaData, true, version)
 }
 
-func (o *Data) UpdateBidDeltas(deltaData Book, version string) error {
+func (o *Data[N]) UpdateBidDeltas(deltaData Book, version string) error {
 	return o.updateDeltas(deltaData, false, version)
 }
 
-func (o *Data) updateDeltas(newData Book, isAsk bool, version string) error {
+func (o *Data[N]) updateDeltas(newData Book, isAsk bool, version string) error {
 	for _, v := range newData {
 		price, qty := v[0], v[1]
 		if price == 0 {
@@ -125,7 +125,7 @@ func (o *Data) updateDeltas(newData Book, isAsk bool, version string) error {
 		} else {
 			book = o.Bids
 		}
-		book = UpdateOneBookDelta(price, qty, book, isAsk)
+		book = UpdateOneBookDelta[N](price, qty, book, isAsk)
 		if isAsk {
 			o.Asks = book
 		} else {
@@ -137,11 +137,11 @@ func (o *Data) updateDeltas(newData Book, isAsk bool, version string) error {
 	return nil
 }
 
-func (o *Data) String() string {
+func (o *Data[N]) String() string {
 	return fmt.Sprintf("ob-%v-%v-%v", o.Cex, o.Type, o.Symbol)
 }
 
-func UpdateOneBookDelta(price, qty float64, oldBook Book, isAsk bool) Book {
+func UpdateOneBookDelta[N any](price, qty float64, oldBook Book, isAsk bool) Book {
 	updated := false
 	for i, v := range oldBook {
 		oldPrice := v[0]

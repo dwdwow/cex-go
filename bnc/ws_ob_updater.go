@@ -14,10 +14,10 @@ type obWsCacher interface {
 	symbolType() cex.SymbolType
 	cache() *props.SafeRWMap[string, []WsDepthMsg]
 	exist() *props.SafeRWMap[string, bool]
-	ods() *props.SafeRWMap[string, ob.Data]
+	ods() *props.SafeRWMap[string, ob.Data[WsDepthMsg]]
 }
 
-type obUpdater func(w obWsCacher, depthData WsDepthMsg) ob.Data
+type obUpdater func(w obWsCacher, depthData WsDepthMsg) ob.Data[WsDepthMsg]
 
 func defaultObUpdater(symbolType cex.SymbolType) obUpdater {
 	switch symbolType {
@@ -29,10 +29,10 @@ func defaultObUpdater(symbolType cex.SymbolType) obUpdater {
 	panic("bnc: unknown symbol type")
 }
 
-func spObUpdater(w obWsCacher, depthData WsDepthMsg) ob.Data {
+func spObUpdater(w obWsCacher, depthData WsDepthMsg) ob.Data[WsDepthMsg] {
 	symbol := depthData.Symbol
 	buffer := w.cache().GetV(symbol)
-	empty := ob.NewData(cex.BINANCE, w.symbolType(), symbol)
+	empty := ob.NewData[WsDepthMsg](cex.BINANCE, w.symbolType(), symbol)
 	obData, ok := w.ods().GetVWithOk(symbol)
 	if !ok || obData.Empty() {
 		empty.SetErr(errors.New("bnc: unexpected error: binance update ob: if !ok || obData.Empty()"))
@@ -126,10 +126,10 @@ func spObUpdater(w obWsCacher, depthData WsDepthMsg) ob.Data {
 	return obData
 }
 
-func futuresObUpdater(w obWsCacher, depthData WsDepthMsg) ob.Data {
+func futuresObUpdater(w obWsCacher, depthData WsDepthMsg) ob.Data[WsDepthMsg] {
 	symbol := depthData.Symbol
 	buffer := w.cache().GetV(symbol)
-	empty := ob.NewData(cex.BINANCE, cex.SYMBOL_TYPE_UM_FUTURES, symbol)
+	empty := ob.NewData[WsDepthMsg](cex.BINANCE, cex.SYMBOL_TYPE_UM_FUTURES, symbol)
 	obData, ok := w.ods().GetVWithOk(symbol)
 	if !ok || obData.Empty() {
 		empty.SetErr(errors.New("bnc: unexpected error: binance update ob: if !ok || obData.Empty()"))

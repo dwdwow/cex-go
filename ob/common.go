@@ -7,8 +7,8 @@ import (
 	"github.com/dwdwow/cex-go"
 )
 
-func NewData(cexName cex.CexName, obType cex.SymbolType, symbol string) Data {
-	return Data{
+func NewData[N any](cexName cex.CexName, obType cex.SymbolType, symbol string) Data[N] {
+	return Data[N]{
 		Cex:        cexName,
 		Type:       obType,
 		Symbol:     symbol,
@@ -16,8 +16,8 @@ func NewData(cexName cex.CexName, obType cex.SymbolType, symbol string) Data {
 	}
 }
 
-func RedisMsgUnmarshal(payload string) (Data, error) {
-	o := new(Data)
+func RedisMsgUnmarshal[N any](payload string) (Data[N], error) {
+	o := new(Data[N])
 	err := json.Unmarshal([]byte(payload), o)
 	return *o, err
 }
