@@ -14,12 +14,12 @@ type RawOrderBook struct {
 	Asks         [][]string `json:"asks"`
 
 	// Futures
-	EventTime       int64 `json:"E"`
-	TransactionTime int64 `json:"T"`
+	EventTime       int64 `json:"E,omitempty"`
+	TransactionTime int64 `json:"T,omitempty"`
 
 	// CM Futures
-	Symbol string `json:"symbol"`
-	Pair   string `json:"pair"`
+	Symbol string `json:"symbol,omitempty"`
+	Pair   string `json:"pair,omitempty"`
 }
 
 type OrderBook struct {
@@ -29,12 +29,12 @@ type OrderBook struct {
 	Asks         ob.Book `json:"asks"`
 
 	// Futures
-	EventTime       int64 `json:"E"`
-	TransactionTime int64 `json:"T"`
+	EventTime       int64 `json:"E,omitempty"`
+	TransactionTime int64 `json:"T,omitempty"`
 
 	// CM Futures
-	Symbol string `json:"symbol"`
-	Pair   string `json:"pair"`
+	Symbol string `json:"symbol,omitempty"`
+	Pair   string `json:"pair,omitempty"`
 }
 
 type ParamsOrderBook struct {
