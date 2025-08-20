@@ -358,3 +358,22 @@ func TestOrderbookBaseClient(t *testing.T) {
 		}
 	}()
 }
+
+func TestOrderbookBaseClient_Version(t *testing.T) {
+	clt, err := startNewOrderBookBaseWs(cex.SYMBOL_TYPE_UM_FUTURES, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unsubed, err := clt.sub("BTCUSDT")
+	if err != nil {
+		t.Fatal(err, unsubed)
+	}
+	ch := clt.newCh("BTCUSDT")
+	for {
+		o, ok := <-ch
+		if !ok {
+			panic("ch closed")
+		}
+		fmt.Println(o.Version)
+	}
+}
