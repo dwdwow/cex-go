@@ -60,7 +60,7 @@ func (w *PublicWs) NewAggTradeCh(sybType cex.SymbolType, symbol string) (ch <-ch
 	return w.agClt.NewCh(sybType, symbol)
 }
 
-func (w *PublicWs) NewOrderBookCh(sybType cex.SymbolType, symbol string) (ch <-chan ob.Data[WsDepthMsg], err error) {
+func (w *PublicWs) NewOrderBookCh(sybType cex.SymbolType, symbol string) (ch <-chan ob.Data[WsDepthStream], err error) {
 	return w.obClt.NewCh(sybType, symbol)
 }
 
@@ -72,7 +72,7 @@ func (w *PublicWs) RemoveAggTradeCh(ch <-chan AggTradeMsg) {
 	w.agClt.RemoveCh(ch)
 }
 
-func (w *PublicWs) RemoveOrderBookCh(ch <-chan ob.Data[WsDepthMsg]) {
+func (w *PublicWs) RemoveOrderBookCh(ch <-chan ob.Data[WsDepthStream]) {
 	w.obClt.RemoveCh(ch)
 }
 

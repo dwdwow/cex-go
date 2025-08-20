@@ -61,7 +61,7 @@ func (oc *OrderBookWs) Unsub(symbolType cex.SymbolType, symbols ...string) (err 
 	return errors.New("bnc: unknown symbol type")
 }
 
-func (oc *OrderBookWs) NewCh(symbolType cex.SymbolType, symbol string) (ch <-chan ob.Data[WsDepthMsg], err error) {
+func (oc *OrderBookWs) NewCh(symbolType cex.SymbolType, symbol string) (ch <-chan ob.Data[WsDepthStream], err error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
 		return oc.spClt.newCh(symbol)
@@ -73,7 +73,7 @@ func (oc *OrderBookWs) NewCh(symbolType cex.SymbolType, symbol string) (ch <-cha
 	return nil, errors.New("bnc: unknown symbol type")
 }
 
-func (oc *OrderBookWs) RemoveCh(ch <-chan ob.Data[WsDepthMsg]) {
+func (oc *OrderBookWs) RemoveCh(ch <-chan ob.Data[WsDepthStream]) {
 	oc.spClt.removeCh(ch)
 	oc.umClt.removeCh(ch)
 	oc.cmClt.removeCh(ch)
@@ -173,7 +173,7 @@ func (oc *orderBookMergedWs) unsubSymbols(symbols ...string) (err error) {
 // newCh will return a channel that will receive the ob data
 // if symbol is not found, ok will be false,
 // should subscribe the symbol first
-func (oc *orderBookMergedWs) newCh(symbol string) (ch <-chan ob.Data[WsDepthMsg], err error) {
+func (oc *orderBookMergedWs) newCh(symbol string) (ch <-chan ob.Data[WsDepthStream], err error) {
 	clt, ok := oc.sybs.GetVWithOk(symbol)
 	if !ok {
 		return nil, errors.New("bnc: symbol not found")
@@ -181,7 +181,7 @@ func (oc *orderBookMergedWs) newCh(symbol string) (ch <-chan ob.Data[WsDepthMsg]
 	return clt.newCh(symbol), nil
 }
 
-func (oc *orderBookMergedWs) removeCh(ch <-chan ob.Data[WsDepthMsg]) {
+func (oc *orderBookMergedWs) removeCh(ch <-chan ob.Data[WsDepthStream]) {
 	for _, clt := range oc.clts {
 		clt.removeCh(ch)
 	}
@@ -217,12 +217,12 @@ type orderBookBaseWs struct {
 
 	rawWs *RawWs
 
-	_cache  *props.SafeRWMap[string, []WsDepthMsg]
+	_cache  *props.SafeRWMap[string, []WsDepthStream]
 	_exist  *props.SafeRWMap[string, bool]
-	_ods    *props.SafeRWMap[string, ob.Data[WsDepthMsg]]
-	workers *props.SafeRWMap[string, chan WsDepthMsg]
+	_ods    *props.SafeRWMap[string, ob.Data[WsDepthStream]]
+	workers *props.SafeRWMap[string, chan WsDepthStream]
 
-	radio *props.Radio[ob.Data[WsDepthMsg]]
+	radio *props.Radio[ob.Data[WsDepthStream]]
 
 	logger *slog.Logger
 }
@@ -240,8 +240,8 @@ func startNewOrderBookBaseWs(symbolType cex.SymbolType, logger *slog.Logger) (ws
 	}
 	radio := props.NewRadio(
 		// props.WithFanoutDur[ob.Data](time.Second),
-		props.WithFanoutLogger[ob.Data[WsDepthMsg]](logger),
-		props.WithFanoutChCap[ob.Data[WsDepthMsg]](10000),
+		props.WithFanoutLogger[ob.Data[WsDepthStream]](logger),
+		props.WithFanoutChCap[ob.Data[WsDepthStream]](10000),
 	)
 	ctx, cancel := context.WithCancel(context.Background())
 	ws = &orderBookBaseWs{
@@ -251,10 +251,10 @@ func startNewOrderBookBaseWs(symbolType cex.SymbolType, logger *slog.Logger) (ws
 		obGetter:  defaultObGetter(symbolType),
 		obUpdater: defaultObUpdater(symbolType),
 		rawWs:     raw,
-		_cache:    props.NewSafeRWMap[string, []WsDepthMsg](),
+		_cache:    props.NewSafeRWMap[string, []WsDepthStream](),
 		_exist:    props.NewSafeRWMap[string, bool](),
-		_ods:      props.NewSafeRWMap[string, ob.Data[WsDepthMsg]](),
-		workers:   props.NewSafeRWMap[string, chan WsDepthMsg](),
+		_ods:      props.NewSafeRWMap[string, ob.Data[WsDepthStream]](),
+		workers:   props.NewSafeRWMap[string, chan WsDepthStream](),
 		radio:     radio,
 		logger:    logger,
 	}
@@ -266,7 +266,7 @@ func (oc *orderBookBaseWs) symbolType() cex.SymbolType {
 	return oc.sybType
 }
 
-func (oc *orderBookBaseWs) cache() *props.SafeRWMap[string, []WsDepthMsg] {
+func (oc *orderBookBaseWs) cache() *props.SafeRWMap[string, []WsDepthStream] {
 	return oc._cache
 }
 
@@ -274,17 +274,17 @@ func (oc *orderBookBaseWs) exist() *props.SafeRWMap[string, bool] {
 	return oc._exist
 }
 
-func (oc *orderBookBaseWs) ods() *props.SafeRWMap[string, ob.Data[WsDepthMsg]] {
+func (oc *orderBookBaseWs) ods() *props.SafeRWMap[string, ob.Data[WsDepthStream]] {
 	return oc._ods
 }
 
 // newCh will return a channel that will receive the ob data
 // symbol is case insensitive
-func (oc *orderBookBaseWs) newCh(symbol string) <-chan ob.Data[WsDepthMsg] {
+func (oc *orderBookBaseWs) newCh(symbol string) <-chan ob.Data[WsDepthStream] {
 	return oc.radio.Sub(symbol)
 }
 
-func (oc *orderBookBaseWs) removeCh(ch <-chan ob.Data[WsDepthMsg]) {
+func (oc *orderBookBaseWs) removeCh(ch <-chan ob.Data[WsDepthStream]) {
 	oc.radio.UnsubAll(ch)
 }
 
@@ -372,7 +372,7 @@ func (oc *orderBookBaseWs) handle(msg RawWsMsg) {
 		go oc.broadcastObs(oc.makeAllEmptyObs(err))
 		return
 	}
-	m := WsDepthMsg{}
+	m := WsDepthStream{}
 	err = json.Unmarshal(data, &m)
 	if err != nil {
 		go oc.broadcastObs(oc.makeAllEmptyObs(err))
@@ -404,7 +404,7 @@ func (oc *orderBookBaseWs) handle(msg RawWsMsg) {
 	oc.logger.Warn("unhandled ob ws msg", "msg", string(data))
 }
 
-func (oc *orderBookBaseWs) worker(ch chan WsDepthMsg) {
+func (oc *orderBookBaseWs) worker(ch chan WsDepthStream) {
 	for {
 		select {
 		case data, ok := <-ch:
@@ -426,18 +426,18 @@ func (oc *orderBookBaseWs) worker(ch chan WsDepthMsg) {
 }
 
 func (oc *orderBookBaseWs) newWorker(symbol string) {
-	oc.workers.SetIfNotExists(symbol, func() chan WsDepthMsg {
-		ch := make(chan WsDepthMsg, 10000)
+	oc.workers.SetIfNotExists(symbol, func() chan WsDepthStream {
+		ch := make(chan WsDepthStream, 10000)
 		go oc.worker(ch)
 		return ch
 	}())
 }
 
-func (oc *orderBookBaseWs) makeAllEmptyObs(err error) []ob.Data[WsDepthMsg] {
+func (oc *orderBookBaseWs) makeAllEmptyObs(err error) []ob.Data[WsDepthStream] {
 	symbols := oc._exist.Keys()
-	var obs []ob.Data[WsDepthMsg]
+	var obs []ob.Data[WsDepthStream]
 	for _, symbol := range symbols {
-		empty := ob.NewData[WsDepthMsg](cex.BINANCE, oc.sybType, symbol)
+		empty := ob.NewData[WsDepthStream](cex.BINANCE, oc.sybType, symbol)
 		empty.SetErr(err)
 		oc._ods.SetKV(symbol, empty)
 		obs = append(obs, empty)
@@ -445,7 +445,7 @@ func (oc *orderBookBaseWs) makeAllEmptyObs(err error) []ob.Data[WsDepthMsg] {
 	return obs
 }
 
-func (oc *orderBookBaseWs) broadcastObs(obs []ob.Data[WsDepthMsg]) {
+func (oc *orderBookBaseWs) broadcastObs(obs []ob.Data[WsDepthStream]) {
 	for _, o := range obs {
 		if o.Err == ErrCachingObDepthUpdate {
 			continue
@@ -454,7 +454,7 @@ func (oc *orderBookBaseWs) broadcastObs(obs []ob.Data[WsDepthMsg]) {
 	}
 }
 
-func (oc *orderBookBaseWs) update(depthData WsDepthMsg) (od ob.Data[WsDepthMsg], updated bool) {
+func (oc *orderBookBaseWs) update(depthData WsDepthStream) (od ob.Data[WsDepthStream], updated bool) {
 	symbol := depthData.Symbol
 	err := oc.cacheRawData(depthData)
 	if err != nil {
@@ -479,14 +479,14 @@ func (oc *orderBookBaseWs) update(depthData WsDepthMsg) (od ob.Data[WsDepthMsg],
 	return od, true
 }
 
-func (oc *orderBookBaseWs) newObWithErr(symbol string, err error) ob.Data[WsDepthMsg] {
-	empty := ob.NewData[WsDepthMsg](cex.BINANCE, oc.sybType, symbol)
+func (oc *orderBookBaseWs) newObWithErr(symbol string, err error) ob.Data[WsDepthStream] {
+	empty := ob.NewData[WsDepthStream](cex.BINANCE, oc.sybType, symbol)
 	empty.SetErr(err)
 	oc._ods.SetKV(symbol, empty)
 	return empty
 }
 
-func (oc *orderBookBaseWs) cacheRawData(depthData WsDepthMsg) error {
+func (oc *orderBookBaseWs) cacheRawData(depthData WsDepthStream) error {
 	symbol := depthData.Symbol
 	oldCache := oc._cache.GetV(symbol)
 	if len(oldCache) > 1000 {
@@ -546,7 +546,7 @@ func (oc *orderBookBaseWs) queryOb(symbol string) error {
 	if err != nil {
 		return err
 	}
-	obData := ob.Data[WsDepthMsg]{
+	obData := ob.Data[WsDepthStream]{
 		Cex:        cex.BINANCE,
 		Type:       oc.sybType,
 		Symbol:     symbol,

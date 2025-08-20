@@ -89,7 +89,7 @@ type WsRespRateLimit struct {
 	Count         int64  `json:"count"`
 }
 
-type WsDepthMsg struct {
+type WsDepthStream struct {
 	EventType WsEvent    `json:"e"`
 	EventTime int64      `json:"E"`
 	Symbol    string     `json:"s"`
@@ -236,8 +236,6 @@ type WsKlineStream struct {
 	Symbol    string  `json:"s"`
 	Kline     WsKline `json:"k"`
 }
-
-type WsDepthStream WsDepthMsg
 
 type WsOrderExecutionReport struct {
 	EventType               string             `json:"e"`
