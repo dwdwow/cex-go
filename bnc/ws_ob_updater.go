@@ -122,6 +122,7 @@ func spObUpdater(w obWsCacher, depthData WsDepthMsg) ob.Data {
 		w.cache().SetKV(symbol, buffer[lastIndex+1:])
 	}
 	obData.Time = depthData.EventTime
+	obData.Note = depthData
 	return obData
 }
 
@@ -219,5 +220,6 @@ func futuresObUpdater(w obWsCacher, depthData WsDepthMsg) ob.Data {
 		w.cache().SetKV(symbol, buffer[lastIndex+1:])
 	}
 	obData.Time = depthData.EventTime
+	obData.Note = depthData
 	return obData
 }

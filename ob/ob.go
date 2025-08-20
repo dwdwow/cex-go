@@ -39,14 +39,20 @@ type Data struct {
 	Type    cex.SymbolType `json:"st" bson:"st"`
 	Symbol  string         `json:"s" bson:"s"`
 	Version string         `json:"v" bson:"v"`
+
 	// Time is the cex event time
 	Time int64 `json:"t" bson:"t"`
 	// UpdateTime is the time of the latest data update
 	// use nanoseconds
 	UpdateTime int64 `json:"ut" bson:"ut"`
-	Asks       Book  `json:"a" bson:"a"`
-	Bids       Book  `json:"b" bson:"b"`
-	Err        error `json:"e" bson:"e"`
+
+	Asks Book `json:"a" bson:"a"`
+	Bids Book `json:"b" bson:"b"`
+
+	// Note is the note of the data
+	Note any `json:"n" bson:"n"`
+
+	Err error `json:"e" bson:"e"`
 }
 
 func (o *Data) Copy() *Data {
