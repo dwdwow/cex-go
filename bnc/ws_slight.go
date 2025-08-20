@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dwdwow/cex-go"
 	"github.com/dwdwow/props"
 )
 
@@ -96,7 +97,7 @@ type SlightWsClient struct {
 	logger *slog.Logger
 }
 
-func NewSlightWsClient(cfg RawWsCfg, unmarshaler WsDataUnmarshaler, logger *slog.Logger) *SlightWsClient {
+func StartNewSlightWsClient(cfg RawWsCfg, unmarshaler WsDataUnmarshaler, logger *slog.Logger) (*SlightWsClient, error) {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
@@ -122,14 +123,26 @@ func NewSlightWsClient(cfg RawWsCfg, unmarshaler WsDataUnmarshaler, logger *slog
 		radio:       radio,
 		logger:      logger,
 	}
-	ws.start()
-	return ws
+	return ws, ws.start()
 }
 
-func (w *SlightWsClient) start() {
+func StartNewPublicSlightWsClient(symbolType cex.SymbolType) (*SlightWsClient, error) {
+	switch symbolType {
+	case cex.SYMBOL_TYPE_SPOT:
+		return StartNewSlightWsClient(spotPublicWsCfg, spotWsPublicMsgUnmarshaler, nil)
+	case cex.SYMBOL_TYPE_UM_FUTURES:
+		return StartNewSlightWsClient(umPublicWsCfg, umFuturesWsPublicMsgUnmarshaler, nil)
+	case cex.SYMBOL_TYPE_CM_FUTURES:
+		return StartNewSlightWsClient(cmPublicWsCfg, cmFuturesWsPublicMsgUnmarshaler, nil)
+	default:
+		return nil, fmt.Errorf("invalid symbol type: %v", symbolType)
+	}
+}
+
+func (w *SlightWsClient) start() error {
 	rawWs, err := StartNewRawWs(w.wsCfg, w.logger)
 	if err != nil {
-		return
+		return err
 	}
 	w.rawWs = rawWs
 	go func() {
@@ -141,6 +154,7 @@ func (w *SlightWsClient) start() {
 			w.dataHandler(msg)
 		}
 	}()
+	return nil
 }
 
 func (w *SlightWsClient) Close() {
@@ -171,8 +185,7 @@ func (w *SlightWsClient) dataHandler(msg RawWsMsg) {
 	data := msg.Data
 	e, isArray, ok := getWsEvent(data)
 	if !ok {
-		if string(data) == "{\"result\":null,\"id\":\"1\"}" ||
-			string(data) == "{\"result\":null,\"id\":1}" {
+		if strings.Contains(string(data), "{\"result\":null,\"id\":") {
 			return
 		}
 		w.logger.Error("Can not get event", "data", string(data))

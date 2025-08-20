@@ -6,6 +6,6 @@ import (
 	"github.com/dwdwow/cex-go"
 )
 
-func TestCacheOrderbook(t *testing.T) {
-	CacheOrderbook("testdata", cex.SYMBOL_TYPE_SPOT, "BTCUSDT")
+func TestCacheDepthUpdate(t *testing.T) {
+	CacheDepthUpdate("testdata", cex.SYMBOL_TYPE_SPOT, "BTCUSDT")
 }
