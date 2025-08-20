@@ -26,12 +26,22 @@ func main() {
 		}
 		symbols = append(symbols, pair.Symbol)
 	}
-	go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_SPOT, symbols...)
+
+	// Split symbols into groups of 30 units
+	var symbolGroups [][]string
+	for i := 0; i < len(symbols); i += 30 {
+		end := min(i+30, len(symbols))
+		symbolGroups = append(symbolGroups, symbols[i:end])
+	}
+	for _, group := range symbolGroups {
+		go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_SPOT, group...)
+	}
 
 	pairs, err = bnc.GetUMSymbols()
 	if err != nil {
 		panic(err)
 	}
+	symbols = nil
 	for _, pair := range pairs {
 		if !pair.Tradable {
 			continue
@@ -41,7 +51,15 @@ func main() {
 		}
 		symbols = append(symbols, pair.Symbol)
 	}
-	go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_UM_FUTURES, symbols...)
+	// Split symbols into groups of 30 units
+	symbolGroups = nil
+	for i := 0; i < len(symbols); i += 30 {
+		end := min(i+30, len(symbols))
+		symbolGroups = append(symbolGroups, symbols[i:end])
+	}
+	for _, group := range symbolGroups {
+		go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_UM_FUTURES, group...)
+	}
 
 	time.Sleep(time.Hour * 2)
 
@@ -50,19 +68,28 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	symbols = []string{}
+	symbols = nil
 	for _, pair := range pairs {
 		if !pair.Tradable {
 			continue
 		}
 		symbols = append(symbols, pair.Symbol)
 	}
-	go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_SPOT, symbols...)
+	// Split symbols into groups of 30 units
+	symbolGroups = nil
+	for i := 0; i < len(symbols); i += 30 {
+		end := min(i+30, len(symbols))
+		symbolGroups = append(symbolGroups, symbols[i:end])
+	}
+	for _, group := range symbolGroups {
+		go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_SPOT, group...)
+	}
 
 	pairs, err = bnc.GetUMSymbols()
 	if err != nil {
 		panic(err)
 	}
+	symbols = nil
 	for _, pair := range pairs {
 		if !pair.Tradable {
 			continue
@@ -72,7 +99,14 @@ func main() {
 		}
 		symbols = append(symbols, pair.Symbol)
 	}
-	go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_UM_FUTURES, symbols...)
+	symbolGroups = nil
+	for i := 0; i < len(symbols); i += 30 {
+		end := min(i+30, len(symbols))
+		symbolGroups = append(symbolGroups, symbols[i:end])
+	}
+	for _, group := range symbolGroups {
+		go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_UM_FUTURES, group...)
+	}
 
 	select {}
 }
