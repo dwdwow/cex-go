@@ -7,5 +7,5 @@ import (
 )
 
 func TestCacheDepthUpdate(t *testing.T) {
-	CacheDepthUpdate("testdata", cex.SYMBOL_TYPE_SPOT, "BTCUSDT")
+	CacheDepthUpdate("mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000", "testdata", cex.SYMBOL_TYPE_SPOT, "BTCUSDT")
 }

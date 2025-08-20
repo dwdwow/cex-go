@@ -1,8 +1,6 @@
 package main
 
 import (
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/dwdwow/cex-go"
@@ -10,11 +8,8 @@ import (
 )
 
 func main() {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
-	dataDir := filepath.Join(home, "cache", "cex", "bnc", "depth_update")
+	mongoUri := "mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000"
+	dbName := "bnc_depth"
 	pairs, err := bnc.GetSpotSymbols()
 	if err != nil {
 		panic(err)
@@ -34,7 +29,7 @@ func main() {
 		symbolGroups = append(symbolGroups, symbols[i:end])
 	}
 	for _, group := range symbolGroups {
-		go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_SPOT, group...)
+		go bnc.CacheDepthUpdate(mongoUri, dbName, cex.SYMBOL_TYPE_SPOT, group...)
 	}
 
 	pairs, err = bnc.GetUMSymbols()
@@ -58,12 +53,13 @@ func main() {
 		symbolGroups = append(symbolGroups, symbols[i:end])
 	}
 	for _, group := range symbolGroups {
-		go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_UM_FUTURES, group...)
+		go bnc.CacheDepthUpdate(mongoUri, dbName, cex.SYMBOL_TYPE_UM_FUTURES, group...)
 	}
 
 	time.Sleep(time.Hour * 2)
 
-	dataDir = filepath.Join(home, "cache", "cex", "bnc", "depth_update_redundancy")
+	dbName = "bnc_depth_redundancy"
+
 	pairs, err = bnc.GetSpotSymbols()
 	if err != nil {
 		panic(err)
@@ -82,7 +78,7 @@ func main() {
 		symbolGroups = append(symbolGroups, symbols[i:end])
 	}
 	for _, group := range symbolGroups {
-		go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_SPOT, group...)
+		go bnc.CacheDepthUpdate(mongoUri, dbName, cex.SYMBOL_TYPE_SPOT, group...)
 	}
 
 	pairs, err = bnc.GetUMSymbols()
@@ -105,7 +101,7 @@ func main() {
 		symbolGroups = append(symbolGroups, symbols[i:end])
 	}
 	for _, group := range symbolGroups {
-		go bnc.CacheDepthUpdate(dataDir, cex.SYMBOL_TYPE_UM_FUTURES, group...)
+		go bnc.CacheDepthUpdate(mongoUri, dbName, cex.SYMBOL_TYPE_UM_FUTURES, group...)
 	}
 
 	select {}

@@ -2,22 +2,23 @@ package bnc
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/dwdwow/cex-go"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-func CacheDepthUpdate(dataDir string, symbolType cex.SymbolType, symbols ...string) {
-	slog.Info("bnc: cache orderbook", "dataDir", dataDir, "symbolType", symbolType, "symbols", symbols)
-	err := os.MkdirAll(dataDir, 0777)
+func CacheDepthUpdate(mongoUri, dbName string, symbolType cex.SymbolType, symbols ...string) {
+	client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
 	if err != nil {
+		slog.Error("Can not connect mongo server", "err", err, "uri", mongoUri)
 		panic(err)
 	}
+	db := client.Database(dbName)
+
 	slightWs, err := StartNewPublicSlightWsClient(symbolType)
 	if err != nil {
 		panic(err)
@@ -31,12 +32,9 @@ func CacheDepthUpdate(dataDir string, symbolType cex.SymbolType, symbols ...stri
 	for _, symbol := range symbols {
 		sub := slightWs.SubDepthUpdate100ms(symbol)
 		ch := sub.Chan()
-		depthDir := filepath.Join(dataDir, "depth", string(symbolType), symbol)
-		os.MkdirAll(depthDir, 0777)
-		obDir := filepath.Join(dataDir, "ob", string(symbolType), symbol)
-		os.MkdirAll(obDir, 0777)
 		go func() {
 			go func() {
+				coll := db.Collection("ob_" + string(symbolType))
 				for {
 					publicRestLimitter.Wait(context.Background())
 					o, err := GetOrderbook(symbolType, ParamsOrderBook{
@@ -47,26 +45,24 @@ func CacheDepthUpdate(dataDir string, symbolType cex.SymbolType, symbols ...stri
 						slog.Error("bnc: get orderbook failed", "err", err)
 						continue
 					}
-					data, err := json.Marshal(o)
+					_, err = coll.InsertOne(context.Background(), o)
 					if err != nil {
-						slog.Error("bnc: marshal orderbook to json failed", "err", err, "ob", o)
+						slog.Error("bnc: insert orderbook to mongo failed", "err", err, "ob", o)
 						continue
 					}
-					os.WriteFile(filepath.Join(obDir, fmt.Sprintf("%d.json", time.Now().UnixMilli())), data, 0777)
 					<-time.After(time.Minute)
 				}
 			}()
+			coll := db.Collection("depth_" + symbol + "_" + string(symbolType))
 			for msg := range ch {
 				if msg.Err != nil {
-					slog.Error("bnc: cache orderbook failed", "err", msg.Err)
+					slog.Error("bnc: cache depth update failed", "err", msg.Err)
 					continue
 				}
-				data, err := json.Marshal(msg.Data)
+				_, err = coll.InsertOne(context.Background(), msg.Data)
 				if err != nil {
-					slog.Error("bnc: marshal orderbook to json failed", "err", err, "ob", msg.Data)
-					continue
+					slog.Error("bnc: insert depth update to mongo failed", "err", err, "depth", msg.Data)
 				}
-				os.WriteFile(filepath.Join(depthDir, fmt.Sprintf("%d.json", msg.Data.EventTime)), data, 0777)
 			}
 		}()
 	}
