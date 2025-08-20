@@ -28,7 +28,7 @@ type OrderBook struct {
 	Bids         ob.Book `json:"bids"`
 	Asks         ob.Book `json:"asks"`
 
-	// Futures
+	// UM && CM Futures
 	EventTime       int64 `json:"E,omitempty"`
 	TransactionTime int64 `json:"T,omitempty"`
 
