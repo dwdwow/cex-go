@@ -288,7 +288,7 @@ func (oc *orderBookBaseWs) removeCh(ch <-chan ob.Data) {
 	oc.radio.UnsubAll(ch)
 }
 
-func (oc *orderBookBaseWs) createSubParams(symbols ...string) []string {
+func (oc *orderBookBaseWs) createStreams(symbols ...string) []string {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, strings.ToLower(symbol)+"@depth@100ms")
@@ -307,7 +307,7 @@ func (oc *orderBookBaseWs) sub(symbols ...string) (unsubed []string, err error) 
 			}
 		}
 	}()
-	params := oc.createSubParams(symbols...)
+	params := oc.createStreams(symbols...)
 	res, err := oc.rawWs.Sub(params...)
 	if err == nil {
 		return
@@ -324,7 +324,7 @@ func (oc *orderBookBaseWs) sub(symbols ...string) (unsubed []string, err error) 
 }
 
 func (oc *orderBookBaseWs) unsub(symbols ...string) (err error) {
-	params := oc.createSubParams(symbols...)
+	params := oc.createStreams(symbols...)
 	_, err = oc.rawWs.Unsub(params...)
 	if err != nil {
 		return err
