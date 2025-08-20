@@ -29,6 +29,10 @@ func spotWsPrivateMsgUnmarshaler(e WsEvent, _ bool, data []byte) (any, error) {
 	}
 }
 
+func SpotWsPrivateMsgUnmarshaler() WsDataUnmarshaler {
+	return spotWsPrivateMsgUnmarshaler
+}
+
 func spotWsPublicMsgUnmarshaler(e WsEvent, _ bool, data []byte) (any, error) {
 	switch e {
 	case WsEventAggTrade:
@@ -42,6 +46,10 @@ func spotWsPublicMsgUnmarshaler(e WsEvent, _ bool, data []byte) (any, error) {
 	default:
 		return nil, fmt.Errorf("bnc: unknown event %v", e)
 	}
+}
+
+func SpotWsPublicMsgUnmarshaler() WsDataUnmarshaler {
+	return spotWsPublicMsgUnmarshaler
 }
 
 func umFuturesWsPublicMsgUnmarshaler(e WsEvent, isArray bool, data []byte) (any, error) {
@@ -67,6 +75,10 @@ func umFuturesWsPublicMsgUnmarshaler(e WsEvent, isArray bool, data []byte) (any,
 	}
 }
 
+func UmFuturesWsPublicMsgUnmarshaler() WsDataUnmarshaler {
+	return umFuturesWsPublicMsgUnmarshaler
+}
+
 func cmFuturesWsPublicMsgUnmarshaler(e WsEvent, isArray bool, data []byte) (any, error) {
 	switch e {
 	case WsEventAggTrade:
@@ -90,4 +102,8 @@ func cmFuturesWsPublicMsgUnmarshaler(e WsEvent, isArray bool, data []byte) (any,
 	default:
 		return nil, fmt.Errorf("bnc: unknown event %v", e)
 	}
+}
+
+func CmFuturesWsPublicMsgUnmarshaler() WsDataUnmarshaler {
+	return cmFuturesWsPublicMsgUnmarshaler
 }
