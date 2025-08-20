@@ -23,6 +23,8 @@ func GetUMOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 		return
 	}
 	orderBook.LastUpdateID = rawOrderBook.LastUpdateID
+	orderBook.EventTime = rawOrderBook.EventTime
+	orderBook.TransactionTime = rawOrderBook.TransactionTime
 	orderBook.Bids = make(ob.Book, len(rawOrderBook.Bids))
 	orderBook.Asks = make(ob.Book, len(rawOrderBook.Asks))
 	for i, bid := range rawOrderBook.Bids {
