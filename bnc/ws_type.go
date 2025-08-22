@@ -108,7 +108,7 @@ type WsBookTickerStream struct {
 	EventType         WsEvent `json:"e" bson:"e"`
 	OrderBookUpdateId int64   `json:"u" bson:"u"`
 	EventTime         int64   `json:"E" bson:"E"`
-	TransactionTime   int64   `json:"T" bson:"T"`
+	TxTime            int64   `json:"T" bson:"T"`
 	Symbol            string  `json:"s" bson:"s"`
 	BestBidPrice      string  `json:"b" bson:"b"`
 	BestBidQty        string  `json:"B" bson:"B"`
