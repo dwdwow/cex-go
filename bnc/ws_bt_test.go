@@ -117,3 +117,28 @@ func TestBookTickerWs(t *testing.T) {
 	ws.RemoveCh(ch1)
 	time.Sleep(time.Second * 5)
 }
+
+func TestBookTickerWs2(t *testing.T) {
+	ws := NewBookTickerWs(nil)
+	unsubed, err := ws.Sub(cex.SYMBOL_TYPE_SPOT, spotSymbols200...)
+	if err != nil {
+		t.Fatal(err, len(unsubed), unsubed)
+	}
+	ch1, err := ws.NewCh(cex.SYMBOL_TYPE_SPOT, "ETHBTC")
+	if err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		for msg := range ch1 {
+			if msg.Err != nil {
+				t.Log(msg.Err)
+				continue
+			}
+			t.Log(msg)
+		}
+		t.Log("ch1 done")
+	}()
+	time.Sleep(time.Second * 5)
+	ws.RemoveCh(ch1)
+	time.Sleep(time.Second * 5)
+}

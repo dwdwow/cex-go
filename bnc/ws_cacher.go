@@ -140,12 +140,28 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 		fmt.Println(unsubed)
 		panic(err)
 	}
+	depthRedunChs := map[string]chan PublicStreamMsg[WsDepthStream]{}
+	for _, symbol := range symbols {
+		depthRedunChs[symbol] = make(chan PublicStreamMsg[WsDepthStream], 1000)
+	}
 	go func() {
 		time.Sleep(time.Hour)
 		unsubed, err := redunWsDepth.Sub(symbolType, symbols...)
 		if err != nil {
 			fmt.Println(unsubed)
 			panic(err)
+		}
+		for symbol, ch := range depthRedunChs {
+			nc, err := redunWsDepth.NewCh(symbolType, symbol)
+			if err != nil {
+				fmt.Println(symbolType, symbol, "redun depth", err)
+				panic(err)
+			}
+			go func() {
+				for msg := range nc {
+					ch <- msg
+				}
+			}()
 		}
 	}()
 
@@ -154,6 +170,10 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 		fmt.Println(unsubed)
 		panic(err)
 	}
+	bookTickerRedunChs := map[string]chan PublicStreamMsg[WsBookTickerStream]{}
+	for _, symbol := range symbols {
+		bookTickerRedunChs[symbol] = make(chan PublicStreamMsg[WsBookTickerStream], 1000)
+	}
 	go func() {
 		time.Sleep(time.Hour)
 		unsubed, err := redunWsBookTicker.Sub(symbolType, symbols...)
@@ -161,32 +181,44 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 			fmt.Println(unsubed)
 			panic(err)
 		}
+		for symbol, ch := range bookTickerRedunChs {
+			nc, err := redunWsBookTicker.NewCh(symbolType, symbol)
+			if err != nil {
+				fmt.Println(symbolType, symbol, "redun book ticker", err)
+				panic(err)
+			}
+			go func() {
+				for msg := range nc {
+					ch <- msg
+				}
+			}()
+		}
 	}()
 
 	for _, symbol := range symbols {
 		chDepth, err := wsDepth.NewCh(symbolType, symbol)
 		if err != nil {
-			fmt.Println(symbol, err)
+			fmt.Println(symbolType, symbol, "depth", err)
 			panic(err)
 		}
-		chRedunDepth, err := redunWsDepth.NewCh(symbolType, symbol)
-		if err != nil {
-			fmt.Println(symbol, err)
-			panic(err)
+		redunChDepth, ok := depthRedunChs[symbol]
+		if !ok {
+			fmt.Println(symbolType, symbol, "redun depth not found")
+			panic(fmt.Errorf("redun depth not found"))
 		}
 		chBookTicker, err := wsBookTicker.NewCh(symbolType, symbol)
 		if err != nil {
-			fmt.Println(symbol, err)
+			fmt.Println(symbolType, symbol, "book ticker", err)
 			panic(err)
 		}
-		chRedunBookTicker, err := redunWsBookTicker.NewCh(symbolType, symbol)
-		if err != nil {
-			fmt.Println(symbol, err)
-			panic(err)
+		redunChBookTicker, ok := bookTickerRedunChs[symbol]
+		if !ok {
+			fmt.Println(symbolType, symbol, "redun book ticker not found")
+			panic(fmt.Errorf("redun book ticker not found"))
 		}
 		CacheSymbolDepthUpdateAndBookTicker(
 			symbolType, symbol, mongoUri, dbName,
-			chDepth, chRedunDepth, chBookTicker, chRedunBookTicker,
+			chDepth, redunChDepth, chBookTicker, redunChBookTicker,
 		)
 	}
 
