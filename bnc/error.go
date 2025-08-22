@@ -2,6 +2,7 @@ package bnc
 
 import "errors"
 
+var ErrUnknownSymbolType = errors.New("bnc: unknown symbol type")
 var ErrCachingObDepthUpdate = errors.New("bnc: caching ob depth update")
 var ErrObQueryLimit = errors.New("bnc: ob query limit")
 var ErrObDepthUpdateCacheTooLarge = errors.New("bnc: depth update cache too large")

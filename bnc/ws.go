@@ -24,15 +24,13 @@ func NewWebsocket(cfg WebsocketCfg, logger *slog.Logger) *Websocket {
 	}
 }
 
-var muDefaultWebsocket sync.Mutex
+var muDefaultWebsocketOnce sync.Once
 var defaultWebsocket *Websocket
 
 func DefaultWebsocket() *Websocket {
-	muDefaultWebsocket.Lock()
-	defer muDefaultWebsocket.Unlock()
-	if defaultWebsocket == nil {
+	muDefaultWebsocketOnce.Do(func() {
 		defaultWebsocket = NewWebsocket(DefaultWebsocketCfg(), nil)
-	}
+	})
 	return defaultWebsocket
 }
 

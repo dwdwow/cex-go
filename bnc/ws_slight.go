@@ -97,6 +97,35 @@ type SlightWsClient struct {
 	logger *slog.Logger
 }
 
+func NewSlightWsClient(cfg RawWsCfg, unmarshaler WsDataUnmarshaler, logger *slog.Logger) *SlightWsClient {
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	var user *User
+	if cfg.APIKey != "" && cfg.APISecretKey != "" {
+		user = NewUser(UserCfg{
+			APIKey:       cfg.APIKey,
+			APISecretKey: cfg.APISecretKey,
+		})
+	}
+	radio := props.NewRadio(
+		props.WithFanoutDur[SlightWsClientMsg](time.Second),
+		props.WithFanoutLogger[SlightWsClientMsg](logger),
+		props.WithFanoutChCap[SlightWsClientMsg](1024),
+	)
+	ws := &SlightWsClient{
+		ctx:         ctx,
+		ctxCancel:   cancel,
+		wsCfg:       cfg,
+		unmarshaler: unmarshaler,
+		user:        user,
+		radio:       radio,
+		logger:      logger,
+	}
+	return ws
+}
+
 func StartNewSlightWsClient(cfg RawWsCfg, unmarshaler WsDataUnmarshaler, logger *slog.Logger) (*SlightWsClient, error) {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -126,6 +155,19 @@ func StartNewSlightWsClient(cfg RawWsCfg, unmarshaler WsDataUnmarshaler, logger 
 	return ws, ws.start()
 }
 
+func NewPublicSlightWsClient(symbolType cex.SymbolType) *SlightWsClient {
+	switch symbolType {
+	case cex.SYMBOL_TYPE_SPOT:
+		return NewSlightWsClient(spotPublicWsCfg, spotWsPublicMsgUnmarshaler, nil)
+	case cex.SYMBOL_TYPE_UM_FUTURES:
+		return NewSlightWsClient(umPublicWsCfg, umFuturesWsPublicMsgUnmarshaler, nil)
+	case cex.SYMBOL_TYPE_CM_FUTURES:
+		return NewSlightWsClient(cmPublicWsCfg, cmFuturesWsPublicMsgUnmarshaler, nil)
+	default:
+		return nil
+	}
+}
+
 func StartNewPublicSlightWsClient(symbolType cex.SymbolType) (*SlightWsClient, error) {
 	switch symbolType {
 	case cex.SYMBOL_TYPE_SPOT:
@@ -139,6 +181,10 @@ func StartNewPublicSlightWsClient(symbolType cex.SymbolType) (*SlightWsClient, e
 	}
 }
 
+func (w *SlightWsClient) Start() error {
+	return w.start()
+}
+
 func (w *SlightWsClient) start() error {
 	rawWs, err := StartNewRawWs(w.wsCfg, w.logger)
 	if err != nil {
@@ -147,11 +193,14 @@ func (w *SlightWsClient) start() error {
 	w.rawWs = rawWs
 	go func() {
 		for {
-			msg := rawWs.Wait()
-			if errors.Is(msg.Err, ErrWsClientClosed) {
+			msg, err := rawWs.Wait()
+			if err != nil {
+				w.logger.Error("SlightWsClient dataHandler error", "err", err)
+			}
+			if errors.Is(err, ErrWsClientClosed) {
 				return
 			}
-			w.dataHandler(msg)
+			w.dataHandler(msg, err)
 		}
 	}()
 	return nil
@@ -177,12 +226,11 @@ func getWsEvent(data []byte) (event WsEvent, isArray, ok bool) {
 	return "", isArray, false
 }
 
-func (w *SlightWsClient) dataHandler(msg RawWsMsg) {
-	if msg.Err != nil {
-		w.sendToAll(SlightWsClientMsg{Data: msg.Data, Err: msg.Err})
+func (w *SlightWsClient) dataHandler(data []byte, err error) {
+	if err != nil {
+		w.sendToAll(SlightWsClientMsg{Err: err})
 		return
 	}
-	data := msg.Data
 	e, isArray, ok := getWsEvent(data)
 	if !ok {
 		if strings.Contains(string(data), "{\"result\":null,\"id\":") {
@@ -195,7 +243,6 @@ func (w *SlightWsClient) dataHandler(msg RawWsMsg) {
 	// singleFan := w.mfan[string(e)]
 	// allFan := w.mfan[mfanKeyAll]
 	newMsg := SlightWsClientMsg{Event: e, Data: data, IsArray: isArray}
-	var err error
 	if w.unmarshaler != nil {
 		newMsg.Data, err = w.unmarshaler(e, isArray, data)
 		if err != nil {
@@ -295,12 +342,12 @@ func (w *SlightWsClient) Unsub(event string, ch <-chan SlightWsClientMsg) {
 	w.radio.Unsub(event, ch)
 }
 
-func (w *SlightWsClient) subStream(events ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) subStream(events ...string) (result StreamsSubResult, err error) {
 	return w.rawWs.Sub(events...)
 }
 
 // SubAggTradeStream real time
-func (w *SlightWsClient) SubAggTradeStream(symbols ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubAggTradeStream(symbols ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, strings.ToLower(symbol)+"@aggTrade")
@@ -322,7 +369,7 @@ func (w *SlightWsClient) SubAggTrade(symbol string) *WsSlightClientSubscription[
 
 // SubTradeStream real time
 // just for spot ws
-func (w *SlightWsClient) SubTradeStream(symbols ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubTradeStream(symbols ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, strings.ToLower(symbol)+"@trade")
@@ -344,7 +391,7 @@ func (w *SlightWsClient) SubTrade(symbol string) *WsSlightClientSubscription[WsT
 
 // SubKlineStream 1000ms for 1s, 2000ms for others
 // 1s just for spot kline
-func (w *SlightWsClient) SubKlineStream(interval KlineInterval, symbols ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubKlineStream(interval KlineInterval, symbols ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, fmt.Sprintf("%s@kline_%v", strings.ToLower(symbol), interval))
@@ -365,7 +412,7 @@ func (w *SlightWsClient) SubKline(symbol string, interval KlineInterval) *WsSlig
 }
 
 // SubDepthUpdateStream 1000ms for spot, 250ms for futures
-func (w *SlightWsClient) SubDepthUpdateStream(symbols ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubDepthUpdateStream(symbols ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, strings.ToLower(symbol)+"@depth")
@@ -375,7 +422,7 @@ func (w *SlightWsClient) SubDepthUpdateStream(symbols ...string) (result RawWsSu
 
 // SubDepthUpdateStream500ms 500ms
 // just for futures ws
-func (w *SlightWsClient) SubDepthUpdateStream500ms(symbols ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubDepthUpdateStream500ms(symbols ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, strings.ToLower(symbol)+"@depth@500ms")
@@ -384,7 +431,7 @@ func (w *SlightWsClient) SubDepthUpdateStream500ms(symbols ...string) (result Ra
 }
 
 // SubDepthUpdateStream100ms 100ms
-func (w *SlightWsClient) SubDepthUpdateStream100ms(symbols ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubDepthUpdateStream100ms(symbols ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, strings.ToLower(symbol)+"@depth@100ms")
@@ -429,7 +476,7 @@ func (w *SlightWsClient) SubDepthUpdate100ms(symbol string) *WsSlightClientSubsc
 }
 
 // SubMarkPriceStream1s 1s
-func (w *SlightWsClient) SubMarkPriceStream1s(symbols ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubMarkPriceStream1s(symbols ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, strings.ToLower(symbol)+"@markPrice@1s")
@@ -438,7 +485,7 @@ func (w *SlightWsClient) SubMarkPriceStream1s(symbols ...string) (result RawWsSu
 }
 
 // SubMarkPriceStream3s 3s
-func (w *SlightWsClient) SubMarkPriceStream3s(symbols ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubMarkPriceStream3s(symbols ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, strings.ToLower(symbol)+"@markPrice")
@@ -468,13 +515,13 @@ func (w *SlightWsClient) SubMarkPrice3s(symbol string) *WsSlightClientSubscripti
 
 // SubAllMarkPriceStream1s 1s
 // just for um futures
-func (w *SlightWsClient) SubAllMarkPriceStream1s() (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubAllMarkPriceStream1s() (result StreamsSubResult, err error) {
 	return w.subStream("!markPrice@arr@1s")
 }
 
 // SubAllMarkPriceStream3s 3s
 // just for um futures
-func (w *SlightWsClient) SubAllMarkPriceStream3s() (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubAllMarkPriceStream3s() (result StreamsSubResult, err error) {
 	return w.subStream("!markPrice@arr")
 }
 
@@ -495,7 +542,7 @@ func (w *SlightWsClient) SubAllMarkPriceEvents() *WsSlightClientSubscription[[]W
 
 // SubCMIndexPriceStream3s 3s
 // just for cm futures
-func (w *SlightWsClient) SubCMIndexPriceStream3s(pairs ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubCMIndexPriceStream3s(pairs ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, pair := range pairs {
 		params = append(params, strings.ToLower(pair)+"@indexPrice")
@@ -505,7 +552,7 @@ func (w *SlightWsClient) SubCMIndexPriceStream3s(pairs ...string) (result RawWsS
 
 // SubCMIndexPriceStream1s 1s
 // just for cm futures
-func (w *SlightWsClient) SubCMIndexPriceStream1s(pairs ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubCMIndexPriceStream1s(pairs ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, pair := range pairs {
 		params = append(params, strings.ToLower(pair)+"@indexPrice@1s")
@@ -541,7 +588,7 @@ func (w *SlightWsClient) SubCMIndexPrice1s(pair string) *WsSlightClientSubscript
 
 // SubLiquidationOrderStream 1s
 // just for futures
-func (w *SlightWsClient) SubLiquidationOrderStream(symbols ...string) (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubLiquidationOrderStream(symbols ...string) (result StreamsSubResult, err error) {
 	var params []string
 	for _, symbol := range symbols {
 		params = append(params, strings.ToLower(symbol)+"@forceOrder")
@@ -563,7 +610,7 @@ func (w *SlightWsClient) SubLiquidationOrder(symbol string) *WsSlightClientSubsc
 }
 
 // SubAllMarketLiquidationOrderStream 1s
-func (w *SlightWsClient) SubAllMarketLiquidationOrderStream() (result RawWsSubStreamsResult, err error) {
+func (w *SlightWsClient) SubAllMarketLiquidationOrderStream() (result StreamsSubResult, err error) {
 	return w.subStream("!forceOrder@arr")
 }
 

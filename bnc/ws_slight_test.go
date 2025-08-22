@@ -1,8 +1,11 @@
 package bnc
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
+	"github.com/dwdwow/cex-go"
 	"github.com/dwdwow/props"
 )
 
@@ -43,14 +46,35 @@ func TestUmFuturesPublicWsClient(t *testing.T) {
 	props.PanicIfNotNil(err)
 	_, err = ws.SubDepthUpdateStream("btcusdt", "ethusdt")
 	props.PanicIfNotNil(err)
-	sub := ws.SubDepthUpdate("BTCUSDT")
+	ch := ws.SubDepthUpdate("BTCUSDT").Chan()
+	ch3 := ws.SubDepthUpdate("ETHUSDT").Chan()
+	ws2 := NewPublicSlightWsClient(cex.SYMBOL_TYPE_UM_FUTURES)
+	ch2 := ws2.SubDepthUpdate("BTCUSDT").Chan()
+	go func() {
+		time.Sleep(time.Second*10 + time.Millisecond*77)
+		err := ws2.Start()
+		if err != nil {
+			panic(err)
+		}
+		_, err = ws2.SubDepthUpdateStream("BTCUSDT")
+		if err != nil {
+			panic(err)
+		}
+	}()
+
 	for {
-		msg := <-sub.Chan()
+		var msg SlightWsClientSubscriptionMsg[WsDepthStream]
+		select {
+		case msg = <-ch:
+		case msg = <-ch2:
+		case msg = <-ch3:
+		}
 		if msg.Err != nil {
 			t.Error(msg.Err)
 			break
 		}
-		t.Logf("%+v", msg.Data)
+		data := msg.Data
+		fmt.Println(data.Symbol, data.EventTime, data.FirstId, data.LastId)
 	}
 }
 

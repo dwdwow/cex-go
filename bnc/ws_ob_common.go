@@ -10,7 +10,7 @@ import (
 
 var publicRestLimitter = limiter.New(time.Second, 1)
 
-const maxObWsStream = 30
+const maxWsStream = 30
 const maxWsChCap = 10000
 const maxSpWsReqPerSec = 5
 const maxFuWsReqPerSec = 10

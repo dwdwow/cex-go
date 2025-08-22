@@ -8,244 +8,97 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/dwdwow/cex-go"
 	"github.com/dwdwow/props"
 )
 
-type AggTradeWs struct {
-	spClt *aggTradeMergedWs
-	umClt *aggTradeMergedWs
-	cmClt *aggTradeMergedWs
+func NewAggTradeStream(kit PublicStreamHandlerKit[WsAggTradeStream], logger *slog.Logger) *PublicStream[WsAggTradeStream] {
+	return NewPublicStream(kit, logger)
 }
 
-func NewAggTradeWs(logger *slog.Logger) *AggTradeWs {
-	if logger == nil {
-		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
-	}
-	logger = logger.With("ws", "bnc_ag_ws")
-	return &AggTradeWs{
-		spClt: newAggTradeMergedWs(cex.SYMBOL_TYPE_SPOT, logger),
-		umClt: newAggTradeMergedWs(cex.SYMBOL_TYPE_UM_FUTURES, logger),
-		cmClt: newAggTradeMergedWs(cex.SYMBOL_TYPE_CM_FUTURES, logger),
-	}
+func NewAggTradeWs(logger *slog.Logger) *PublicStream[WsAggTradeStream] {
+	return NewAggTradeStream(AggTradeOneTopicWsKit{}, logger)
 }
 
-func (aw *AggTradeWs) Sub(symbolType cex.SymbolType, symbols ...string) (unsubed []string, err error) {
-	switch symbolType {
-	case cex.SYMBOL_TYPE_SPOT:
-		return aw.spClt.sub(symbols...)
-	case cex.SYMBOL_TYPE_UM_FUTURES:
-		return aw.umClt.sub(symbols...)
-	case cex.SYMBOL_TYPE_CM_FUTURES:
-		return aw.cmClt.sub(symbols...)
-	}
-	return nil, errors.New("bnc: unknown symbol type")
+type AggTradeOneTopicWsKit struct {
 }
 
-func (aw *AggTradeWs) Unsub(symbolType cex.SymbolType, symbols ...string) (err error) {
-	switch symbolType {
-	case cex.SYMBOL_TYPE_SPOT:
-		return aw.spClt.unsub(symbols...)
-	case cex.SYMBOL_TYPE_UM_FUTURES:
-		return aw.umClt.unsub(symbols...)
-	case cex.SYMBOL_TYPE_CM_FUTURES:
-		return aw.cmClt.unsub(symbols...)
-	}
-	return errors.New("bnc: unknown symbol type")
+func aggTradeStreamer(symbol string) string {
+	return fmt.Sprintf("%s@aggTrade", strings.ToLower(symbol))
 }
 
-func (aw *AggTradeWs) NewCh(symbolType cex.SymbolType, symbol string) (ch <-chan AggTradeMsg, err error) {
-	switch symbolType {
-	case cex.SYMBOL_TYPE_SPOT:
-		return aw.spClt.newCh(symbol)
-	case cex.SYMBOL_TYPE_UM_FUTURES:
-		return aw.umClt.newCh(symbol)
-	case cex.SYMBOL_TYPE_CM_FUTURES:
-		return aw.cmClt.newCh(symbol)
-	}
-	return nil, errors.New("bnc: unknown symbol type")
+func (k AggTradeOneTopicWsKit) Stream(symbolType cex.SymbolType, symbol string) string {
+	return aggTradeStreamer(symbol)
 }
 
-func (aw *AggTradeWs) RemoveCh(ch <-chan AggTradeMsg) {
-	aw.spClt.removeCh(ch)
-	aw.umClt.removeCh(ch)
-	aw.cmClt.removeCh(ch)
+func (k AggTradeOneTopicWsKit) New(symbolType cex.SymbolType, logger *slog.Logger) PublicStreamHandler[WsAggTradeStream] {
+	return NewAggTradeSingleWs(symbolType, logger)
 }
 
-func (aw *AggTradeWs) Close() {
-	aw.spClt.close()
-	aw.umClt.close()
-	aw.cmClt.close()
-}
-
-type aggTradeMergedWs struct {
-	mu sync.Mutex
-
-	symbolType cex.SymbolType
-
-	clts       []*aggTradeBaseWs
-	wsByStream *props.SafeRWMap[string, *aggTradeBaseWs]
-
-	logger *slog.Logger
-}
-
-func newAggTradeMergedWs(symbolType cex.SymbolType, logger *slog.Logger) *aggTradeMergedWs {
-	if logger == nil {
-		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
-	}
-	mw := &aggTradeMergedWs{
-		symbolType: symbolType,
-		clts:       make([]*aggTradeBaseWs, 0),
-		wsByStream: props.NewSafeRWMap[string, *aggTradeBaseWs](),
-		logger:     logger,
-	}
-	return mw
-}
-
-func (mw *aggTradeMergedWs) scanAllStream() {
-	for _, clt := range mw.clts {
-		for _, s := range clt.rawWs.Streams() {
-			mw.wsByStream.SetIfNotExists(s, clt)
-		}
-	}
-}
-
-func (mw *aggTradeMergedWs) sub(symbols ...string) (unsubed []string, err error) {
-	mw.mu.Lock()
-	defer mw.mu.Unlock()
-	defer mw.scanAllStream()
-	for _, s := range symbols {
-		if !mw.wsByStream.HasKey(aggTradeStream(s)) {
-			unsubed = append(unsubed, s)
-		}
-	}
-	for _, clt := range mw.clts {
-		if len(unsubed) == 0 {
-			return
-		}
-		unsubed, err = clt.sub(unsubed...)
-		if err != nil && err != ErrNotAllStreamSubed {
-			return
-		}
-	}
-	for {
-		if len(unsubed) == 0 {
-			return
-		}
-		var clt *aggTradeBaseWs
-		clt, err = startNewAggTradeBaseWs(mw.symbolType, mw.logger)
-		if err != nil {
-			return
-		}
-		unsubed, err = clt.sub(unsubed...)
-		if err != nil && err != ErrNotAllStreamSubed {
-			return
-		}
-		mw.clts = append(mw.clts, clt)
-	}
-}
-
-func (mw *aggTradeMergedWs) unsub(symbols ...string) (err error) {
-	mw.mu.Lock()
-	defer mw.mu.Unlock()
-	defer mw.scanAllStream()
-	for _, s := range symbols {
-		clt, ok := mw.wsByStream.GetVWithOk(aggTradeStream(s))
-		if ok {
-			err = clt.unsub(s)
-			if err != nil {
-				return
-			}
-		}
-	}
-	return nil
-}
-
-func (mw *aggTradeMergedWs) newCh(symbol string) (ch <-chan AggTradeMsg, err error) {
-	clt, ok := mw.wsByStream.GetVWithOk(aggTradeStream(symbol))
-	if !ok {
-		return nil, errors.New("bnc: symbol not found")
-	}
-	return clt.newCh(symbol), nil
-}
-
-func (mw *aggTradeMergedWs) removeCh(ch <-chan AggTradeMsg) {
-	for _, clt := range mw.clts {
-		clt.removeCh(ch)
-	}
-}
-
-func (mw *aggTradeMergedWs) close() {
-	for _, clt := range mw.clts {
-		clt.close()
-	}
-}
-
-type AggTradeMsg struct {
-	SymbolType cex.SymbolType
-	AggTrade   WsAggTradeStream
-	Err        error
-}
-
-type aggTradeBaseWs struct {
+type AggTradeHandler struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
 	sybType cex.SymbolType
 
-	rawWs *RawWs
+	producer StreamProducer
 
-	radio *props.Radio[AggTradeMsg]
+	radio *props.Radio[PublicStreamMsg[WsAggTradeStream]]
 
 	logger *slog.Logger
 }
 
-func startNewAggTradeBaseWs(sybType cex.SymbolType, logger *slog.Logger) (ws *aggTradeBaseWs, err error) {
+func NewAggTradeHandler(sybType cex.SymbolType, producer StreamProducer, logger *slog.Logger) *AggTradeHandler {
 	if logger == nil {
 		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
 	}
 	logger = logger.With("bnc_ag_base_clt", sybType)
-	wsCfg := DefaultPublicWsCfg(sybType)
-	wsCfg.MaxStream = maxObWsStream
-	rawWs, err := StartNewRawWs(wsCfg, logger)
-	if err != nil {
-		return
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 	radio := props.NewRadio(
-		props.WithFanoutLogger[AggTradeMsg](logger),
-		props.WithFanoutChCap[AggTradeMsg](10000),
+		props.WithFanoutLogger[PublicStreamMsg[WsAggTradeStream]](logger),
+		props.WithFanoutChCap[PublicStreamMsg[WsAggTradeStream]](10000),
 	)
-	ws = &aggTradeBaseWs{
-		ctx:     ctx,
-		cancel:  cancel,
-		rawWs:   rawWs,
-		sybType: sybType,
-		radio:   radio,
-		logger:  logger,
+	return &AggTradeHandler{
+		ctx:      ctx,
+		cancel:   cancel,
+		producer: producer,
+		sybType:  sybType,
+		radio:    radio,
+		logger:   logger,
 	}
-	ws.run()
+}
+
+func NewAggTradeSingleWs(sybType cex.SymbolType, logger *slog.Logger) *AggTradeHandler {
+	return NewAggTradeHandler(sybType, NewRawWs(DefaultPublicWsCfg(sybType), logger), logger)
+}
+
+func StartNewAggTradeSingleWs(sybType cex.SymbolType, logger *slog.Logger) (clt *AggTradeHandler, err error) {
+	clt = NewAggTradeSingleWs(sybType, logger)
+	err = clt.Run()
 	return
 }
 
-func (clt *aggTradeBaseWs) createSubParams(symbols ...string) (params []string) {
+func (clt *AggTradeHandler) createSubParams(symbols ...string) (params []string) {
 	for _, symbol := range symbols {
-		params = append(params, aggTradeStream(symbol))
+		params = append(params, aggTradeStreamer(symbol))
 	}
 	return params
 }
 
-func (clt *aggTradeBaseWs) sub(symbols ...string) (unsubed []string, err error) {
+func (clt *AggTradeHandler) Streams() []string {
+	return clt.producer.Streams()
+}
+
+func (clt *AggTradeHandler) Sub(symbols ...string) (unsubed []string, err error) {
 	params := clt.createSubParams(symbols...)
-	res, err := clt.rawWs.Sub(params...)
+	res, err := clt.producer.Sub(params...)
 	if err == nil {
 		return
 	}
 	for _, p := range res.UnsubedStreams {
 		for _, s := range symbols {
-			if p == aggTradeStream(s) {
+			if p == aggTradeStreamer(s) {
 				unsubed = append(unsubed, s)
 				break
 			}
@@ -254,85 +107,86 @@ func (clt *aggTradeBaseWs) sub(symbols ...string) (unsubed []string, err error) 
 	return unsubed, err
 }
 
-func (clt *aggTradeBaseWs) unsub(symbols ...string) (err error) {
+func (clt *AggTradeHandler) Unsub(symbols ...string) (err error) {
 	params := clt.createSubParams(symbols...)
-	_, err = clt.rawWs.Unsub(params...)
+	_, err = clt.producer.Unsub(params...)
 	if err != nil {
 		return err
 	}
 	for _, symbol := range symbols {
-		clt.radio.Broadcast(aggTradeStream(symbol), AggTradeMsg{
+		clt.radio.Broadcast(aggTradeStreamer(symbol), PublicStreamMsg[WsAggTradeStream]{
 			SymbolType: clt.sybType,
-			AggTrade:   WsAggTradeStream{Symbol: symbol},
+			Stream:     WsAggTradeStream{Symbol: symbol},
 			Err:        ErrWsStreamUnsubed,
 		})
 	}
 	return nil
 }
 
-func (clt *aggTradeBaseWs) newCh(symbol string) <-chan AggTradeMsg {
-	return clt.radio.Sub(aggTradeStream(symbol))
+func (clt *AggTradeHandler) NewCh(symbol string) <-chan PublicStreamMsg[WsAggTradeStream] {
+	return clt.radio.Sub(aggTradeStreamer(symbol))
 }
 
-func (clt *aggTradeBaseWs) removeCh(ch <-chan AggTradeMsg) {
+func (clt *AggTradeHandler) RemoveCh(ch <-chan PublicStreamMsg[WsAggTradeStream]) {
 	clt.radio.UnsubAll(ch)
 }
 
-func (clt *aggTradeBaseWs) run() {
+func (clt *AggTradeHandler) Run() error {
+	err := clt.producer.Run()
+	if err != nil {
+		return err
+	}
 	go clt.listener()
+	return nil
 }
 
-func (clt *aggTradeBaseWs) close() {
+func (clt *AggTradeHandler) Close() {
 	clt.cancel()
-	clt.rawWs.Close()
+	clt.producer.Close()
 }
 
-func (clt *aggTradeBaseWs) listener() {
+func (clt *AggTradeHandler) listener() {
 	for {
-		msg := clt.rawWs.Wait()
-		if errors.Is(msg.Err, ErrWsClientClosed) {
+		msg, err := clt.producer.Wait()
+		if errors.Is(err, ErrWsClientClosed) {
 			return
 		}
-		aggTradeMsg := AggTradeMsg{
+		aggTradeMsg := PublicStreamMsg[WsAggTradeStream]{
 			SymbolType: clt.sybType,
 		}
-		if msg.Err != nil {
-			aggTradeMsg.Err = msg.Err
-			clt.radio.BroadcastAll(aggTradeMsg)
-			continue
-		}
-		var stream WsAggTradeStream
-		if err := json.Unmarshal(msg.Data, &stream); err != nil {
+		if err != nil {
 			aggTradeMsg.Err = err
 			clt.radio.BroadcastAll(aggTradeMsg)
 			continue
 		}
-		aggTradeMsg.AggTrade = stream
+		var stream WsAggTradeStream
+		if err := json.Unmarshal(msg, &stream); err != nil {
+			aggTradeMsg.Err = err
+			clt.radio.BroadcastAll(aggTradeMsg)
+			continue
+		}
+		aggTradeMsg.Stream = stream
 		if stream.EventType == WsEventAggTrade {
-			clt.radio.Broadcast(aggTradeStream(stream.Symbol), aggTradeMsg)
+			clt.radio.Broadcast(aggTradeStreamer(stream.Symbol), aggTradeMsg)
 			continue
 		}
 		if stream.EventType != "" {
 			// should not happen
-			clt.logger.Error("unhandled ag trade ws msg", "msg", string(msg.Data))
-			aggTradeMsg.Err = fmt.Errorf("unknown event type msg: %s", string(msg.Data))
+			clt.logger.Error("unhandled ag trade ws msg", "msg", string(msg))
+			aggTradeMsg.Err = fmt.Errorf("unknown event type msg: %s", string(msg))
 			if stream.Symbol != "" {
-				clt.radio.Broadcast(aggTradeStream(stream.Symbol), aggTradeMsg)
+				clt.radio.Broadcast(aggTradeStreamer(stream.Symbol), aggTradeMsg)
 			} else {
 				clt.radio.BroadcastAll(aggTradeMsg)
 			}
 			continue
 		}
 		var resp WsResp[any]
-		if err := json.Unmarshal(msg.Data, &resp); err == nil && resp.Error != nil {
+		if err := json.Unmarshal(msg, &resp); err == nil && resp.Error != nil {
 			aggTradeMsg.Err = fmt.Errorf("bnc: %d %s", resp.Error.Code, resp.Error.Msg)
 			clt.radio.BroadcastAll(aggTradeMsg)
 			continue
 		}
-		clt.logger.Warn("unhandled ag trade ws msg", "msg", string(msg.Data))
+		clt.logger.Warn("unhandled ag trade ws msg", "msg", string(msg))
 	}
-}
-
-func aggTradeStream(symbol string) string {
-	return fmt.Sprintf("%s@aggTrade", strings.ToLower(symbol))
 }

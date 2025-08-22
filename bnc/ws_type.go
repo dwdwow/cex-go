@@ -43,6 +43,7 @@ const (
 	WsEventMarkPriceUpdate               WsEvent = "markPriceUpdate"
 	WsEventIndexPriceUpdate              WsEvent = "indexPriceUpdate"
 	WsEventForceOrder                    WsEvent = "forceOrder"
+	WsEventBookTicker                    WsEvent = "bookTicker"
 	WsEventMarginCall                    WsEvent = "MARGIN_CALL"
 	WsEventAccountUpdate                 WsEvent = "ACCOUNT_UPDATE"
 	WsEventOrderTradeUpdate              WsEvent = "ORDER_TRADE_UPDATE"
@@ -101,6 +102,18 @@ type WsDepthStream struct {
 	// just for future ob
 	TxTime  int64 `json:"T"`
 	PLastId int64 `json:"pu"`
+}
+
+type WsBookTickerStream struct {
+	EventType         WsEvent `json:"e"`
+	OrderBookUpdateId int64   `json:"u"`
+	EventTime         int64   `json:"E"`
+	TransactionTime   int64   `json:"T"`
+	Symbol            string  `json:"s"`
+	BestBidPrice      string  `json:"b"`
+	BestBidQty        string  `json:"B"`
+	BestAskPrice      string  `json:"a"`
+	BestAskQty        string  `json:"A"`
 }
 
 type WsFuAggTradeStream struct {

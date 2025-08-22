@@ -207,7 +207,7 @@ func startNewKlineBaseWs(sybType cex.SymbolType, logger *slog.Logger) (ws *kline
 	}
 	logger = logger.With("bnc_kl_base_clt", sybType)
 	wsCfg := DefaultPublicWsCfg(sybType)
-	wsCfg.MaxStream = maxObWsStream
+	wsCfg.MaxStream = maxWsStream
 	rawWs, err := StartNewRawWs(wsCfg, logger)
 	if err != nil {
 		return
@@ -288,20 +288,23 @@ func (clt *klineBaseWs) close() {
 
 func (clt *klineBaseWs) listener() {
 	for {
-		msg := clt.rawWs.Wait()
-		if errors.Is(msg.Err, ErrWsClientClosed) {
+		msg, err := clt.rawWs.Wait()
+		if err != nil {
+			clt.logger.Error("bnc: kline base ws listener error", "err", err)
+		}
+		if errors.Is(err, ErrWsClientClosed) {
 			return
 		}
 		klineMsg := KlineMsg{
 			SymbolType: clt.sybType,
 		}
-		if msg.Err != nil {
-			klineMsg.Err = msg.Err
+		if err != nil {
+			klineMsg.Err = err
 			clt.radio.BroadcastAll(klineMsg)
 			continue
 		}
 		var stream WsKlineStream
-		if err := json.Unmarshal(msg.Data, &stream); err != nil {
+		if err := json.Unmarshal(msg, &stream); err != nil {
 			klineMsg.Err = err
 			clt.radio.BroadcastAll(klineMsg)
 			continue
@@ -314,7 +317,7 @@ func (clt *klineBaseWs) listener() {
 		}
 		if stream.EventType != "" {
 			// should not happen
-			klineMsg.Err = fmt.Errorf("unknown event type msg: %s", string(msg.Data))
+			klineMsg.Err = fmt.Errorf("unknown event type msg: %s", string(msg))
 			if kline.Symbol != "" && kline.Interval != "" {
 				clt.radio.Broadcast(klineStream(kline.Symbol, kline.Interval), klineMsg)
 			} else {
@@ -323,12 +326,12 @@ func (clt *klineBaseWs) listener() {
 			continue
 		}
 		var resp WsResp[any]
-		if err := json.Unmarshal(msg.Data, &resp); err == nil && resp.Error != nil {
+		if err := json.Unmarshal(msg, &resp); err == nil && resp.Error != nil {
 			klineMsg.Err = fmt.Errorf("bnc: %d %s", resp.Error.Code, resp.Error.Msg)
 			clt.radio.BroadcastAll(klineMsg)
 			continue
 		}
-		clt.logger.Warn("unhandled kline ws msg", "msg", string(msg.Data))
+		clt.logger.Warn("unhandled kline ws msg", "msg", string(msg))
 	}
 }
 

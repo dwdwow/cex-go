@@ -28,7 +28,7 @@ type RawWsCfg struct {
 
 var spotPublicWsCfg = RawWsCfg{
 	Url:             WsBaseUrl,
-	MaxStream:       1024,
+	MaxStream:       maxWsStream,
 	Microsecond:     true,
 	MaxReqPerSecond: maxSpWsReqPerSec,
 }
@@ -40,7 +40,7 @@ func DefaultSpotPublicWsCfg() RawWsCfg {
 var spotPrivateWsCfg = RawWsCfg{
 	Url:             WsBaseUrl,
 	ListenKeyUrl:    API_ENDPOINT + API_V3 + "/userDataStream",
-	MaxStream:       1024,
+	MaxStream:       maxWsStream,
 	Microsecond:     true,
 	MaxReqPerSecond: maxSpWsReqPerSec,
 }
@@ -51,7 +51,7 @@ func DefaultSpotPrivateWsCfg() RawWsCfg {
 
 var umPublicWsCfg = RawWsCfg{
 	Url:             FutureWsBaseUrl,
-	MaxStream:       200,
+	MaxStream:       maxWsStream,
 	MaxReqPerSecond: maxFuWsReqPerSec,
 }
 
@@ -61,7 +61,7 @@ func DefaultUmPublicWsCfg() RawWsCfg {
 
 var cmPublicWsCfg = RawWsCfg{
 	Url:             CMFutureWsBaseUrl,
-	MaxStream:       200,
+	MaxStream:       maxWsStream,
 	MaxReqPerSecond: maxFuWsReqPerSec,
 }
 

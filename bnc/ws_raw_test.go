@@ -13,11 +13,11 @@ func TestRawWs(t *testing.T) {
 	props.PanicIfNotNil(err)
 	go func() {
 		for {
-			msg := ws.Wait()
-			if msg.Err != nil {
-				t.Error(msg.Err)
+			msg, err := ws.Wait()
+			if err != nil {
+				t.Error(err)
 			} else {
-				t.Logf("%s", string(msg.Data))
+				t.Logf("%s", string(msg))
 			}
 		}
 	}()

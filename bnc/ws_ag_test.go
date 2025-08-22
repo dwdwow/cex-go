@@ -8,73 +8,73 @@ import (
 	"github.com/dwdwow/cex-go"
 )
 
-func TestAggTradeBaseWs(t *testing.T) {
-	clt, err := startNewAggTradeBaseWs(cex.SYMBOL_TYPE_SPOT, nil)
+func TestAggTradeSingleWs(t *testing.T) {
+	clt, err := StartNewAggTradeSingleWs(cex.SYMBOL_TYPE_SPOT, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unsubed, err := clt.sub(spotSymbols200[:20]...)
+	unsubed, err := clt.Sub(spotSymbols200[:20]...)
 	if err != nil {
 		t.Fatal(err, len(unsubed), unsubed)
 	}
-	ch1 := clt.newCh("BTCUSDT")
-	ch2 := clt.newCh("BTCUSDT")
-	ch3 := clt.newCh("ETHUSDT")
-	ch4 := clt.newCh("ETHUSDT")
+	ch1 := clt.NewCh("BTCUSDT")
+	ch2 := clt.NewCh("BTCUSDT")
+	ch3 := clt.NewCh("ETHUSDT")
+	ch4 := clt.NewCh("ETHUSDT")
 	go func() {
 		for msg := range ch1 {
 			if msg.Err != nil {
-				fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.Err)
+				fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Err)
 				continue
 			}
-			fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.AggTrade.Price, msg.AggTrade.Qty)
+			fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Stream.Price, msg.Stream.Qty)
 		}
 		fmt.Println("ch1 done", cex.SYMBOL_TYPE_SPOT, "BTCUSDT")
 	}()
 	go func() {
 		for msg := range ch2 {
 			if msg.Err != nil {
-				fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.Err)
+				fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Err)
 				continue
 			}
-			fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.AggTrade.Price, msg.AggTrade.Qty)
+			fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Stream.Price, msg.Stream.Qty)
 		}
 		fmt.Println("ch2 done", cex.SYMBOL_TYPE_UM_FUTURES, "BTCUSDT")
 	}()
 	go func() {
 		for msg := range ch3 {
 			if msg.Err != nil {
-				fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.Err)
+				fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Err)
 				continue
 			}
-			fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.AggTrade.Price, msg.AggTrade.Qty)
+			fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Stream.Price, msg.Stream.Qty)
 		}
 		fmt.Println("ch3 done", cex.SYMBOL_TYPE_SPOT, "ETHUSDT")
 	}()
 	go func() {
 		for msg := range ch4 {
 			if msg.Err != nil {
-				fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.Err)
+				fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Err)
 				continue
 			}
-			fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.AggTrade.Price, msg.AggTrade.Qty)
+			fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Stream.Price, msg.Stream.Qty)
 		}
 		fmt.Println("ch4 done", cex.SYMBOL_TYPE_UM_FUTURES, "ETHUSDT")
 	}()
 	time.Sleep(time.Second * 10)
-	err = clt.unsub("BTCUSDT")
+	err = clt.Unsub("BTCUSDT")
 	if err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(time.Second * 10)
-	clt.removeCh(ch2)
+	clt.RemoveCh(ch2)
 	time.Sleep(time.Second * 10)
-	err = clt.unsub("ETHUSDT")
+	err = clt.Unsub("ETHUSDT")
 	if err != nil {
 		t.Fatal(err)
 	}
 	time.Sleep(time.Second * 10)
-	clt.removeCh(ch3)
+	clt.RemoveCh(ch3)
 	time.Sleep(time.Second * 10)
 }
 
@@ -107,40 +107,40 @@ func TestAggTradeWs(t *testing.T) {
 	go func() {
 		for msg := range ch1 {
 			if msg.Err != nil {
-				fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.Err)
+				fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Err)
 				continue
 			}
-			fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.AggTrade.Price, msg.AggTrade.Qty)
+			fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Stream.Price, msg.Stream.Qty)
 		}
 		fmt.Println("ch1 done", cex.SYMBOL_TYPE_SPOT, "BTCUSDT")
 	}()
 	go func() {
 		for msg := range ch2 {
 			if msg.Err != nil {
-				fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.Err)
+				fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Err)
 				continue
 			}
-			fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.AggTrade.Price, msg.AggTrade.Qty)
+			fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Stream.Price, msg.Stream.Qty)
 		}
 		fmt.Println("ch2 done", cex.SYMBOL_TYPE_SPOT, "ETHUSDT")
 	}()
 	go func() {
 		for msg := range ch3 {
 			if msg.Err != nil {
-				fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.Err)
+				fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Err)
 				continue
 			}
-			fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.AggTrade.Price, msg.AggTrade.Qty)
+			fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Stream.Price, msg.Stream.Qty)
 		}
 		fmt.Println("ch3 done", cex.SYMBOL_TYPE_UM_FUTURES, "BTCUSDT")
 	}()
 	go func() {
 		for msg := range ch4 {
 			if msg.Err != nil {
-				fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.Err)
+				fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Err)
 				continue
 			}
-			fmt.Println(msg.SymbolType, msg.AggTrade.Symbol, msg.AggTrade.Price, msg.AggTrade.Qty)
+			fmt.Println(msg.SymbolType, msg.Stream.Symbol, msg.Stream.Price, msg.Stream.Qty)
 		}
 		fmt.Println("ch4 done", cex.SYMBOL_TYPE_UM_FUTURES, "ETHUSDT")
 	}()

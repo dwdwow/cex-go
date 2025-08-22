@@ -16,9 +16,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type RawWsMsg struct {
-	Data []byte `json:"data"`
-	Err  error  `json:"err"`
+type StreamProducer interface {
+	Streams() []string
+	Run() error
+	Sub(streams ...string) (result StreamsSubResult, err error)
+	Unsub(streams ...string) (id int64, err error)
+	Wait() ([]byte, error)
+	Close()
 }
 
 type RawWsStatus int
@@ -54,6 +58,30 @@ type RawWs struct {
 	respByReqId *props.SafeRWMap[int64, chan WsResp[any]]
 
 	logger *slog.Logger
+}
+
+func NewRawWs(cfg RawWsCfg, logger *slog.Logger) *RawWs {
+	ctx, cancel := context.WithCancel(context.Background())
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+	}
+	logger = logger.With("bnc_raw_ws", cfg.Url)
+	var user *User
+	if cfg.APIKey != "" && cfg.APISecretKey != "" {
+		user = NewUser(UserCfg{
+			APIKey:       cfg.APIKey,
+			APISecretKey: cfg.APISecretKey,
+		})
+	}
+	return &RawWs{
+		ctx:         ctx,
+		ctxCancel:   cancel,
+		cfg:         cfg,
+		user:        user,
+		reqLimiter:  limiter.New(time.Second, cfg.MaxReqPerSecond),
+		respByReqId: props.NewSafeRWMap[int64, chan WsResp[any]](),
+		logger:      logger,
+	}
 }
 
 func StartNewRawWs(cfg RawWsCfg, logger *slog.Logger) (ws *RawWs, err error) {
@@ -106,6 +134,10 @@ func (w *RawWs) Close() {
 	if w.conn != nil {
 		_ = w.conn.Close()
 	}
+}
+
+func (w *RawWs) Run() error {
+	return w.start()
 }
 
 func (w *RawWs) start() error {
@@ -211,15 +243,15 @@ func (w *RawWs) restartAfterErr() error {
 	return w.startNoLock()
 }
 
-func (w *RawWs) Wait() RawWsMsg {
+func (w *RawWs) Wait() (d []byte, err error) {
 	for {
 		t, d, err := w.conn.ReadMessage()
 		if err != nil {
 			e := w.restartAfterErr()
 			if e != nil {
-				return RawWsMsg{Err: fmt.Errorf("bnc: ws has err: %w, cannot restart: %w", err, e)}
+				return nil, fmt.Errorf("bnc: ws has err: %w, cannot restart: %w", err, e)
 			}
-			return RawWsMsg{Err: err}
+			return nil, err
 		}
 		switch t {
 		case websocket.PingMessage:
@@ -229,21 +261,21 @@ func (w *RawWs) Wait() RawWsMsg {
 				if err != nil {
 					e := w.restartAfterErr()
 					if e != nil {
-						return RawWsMsg{Err: fmt.Errorf("bnc: ws has err: %w, cannot restart: %w", err, e)}
+						return nil, fmt.Errorf("bnc: ws has err: %w, cannot restart: %w", err, e)
 					}
-					return RawWsMsg{Err: err}
+					return nil, err
 				}
 			} else {
 				e := w.restartAfterErr()
 				if e != nil {
-					return RawWsMsg{Err: fmt.Errorf("bnc: ws has err: %w, cannot restart: %w", err, e)}
+					return nil, fmt.Errorf("bnc: ws has err: %w, cannot restart: %w", err, e)
 				}
-				return RawWsMsg{Err: errors.New("bnc: cannot write pong msg, conn is nil")}
+				return nil, errors.New("bnc: cannot write pong msg, conn is nil")
 			}
 		case websocket.PongMessage:
 			w.logger.Info("Server pong received", "msg", string(d))
 		case websocket.TextMessage:
-			return RawWsMsg{Data: d}
+			return d, nil
 		case websocket.BinaryMessage:
 			w.logger.Info("Server binary received", "msg", string(d), "binary", d)
 		case websocket.CloseMessage:
@@ -326,16 +358,16 @@ func rawWsNewStreamFilter(oldStreams, subingStreams []string, maxStreams int) (e
 	return
 }
 
-type RawWsSubStreamsResult struct {
+type StreamsSubResult struct {
 	ExistedStreams  []string
 	NewSubedStreams []string
 	UnsubedStreams  []string
 	Id              int64
 }
 
-func (w *RawWs) subStreamsNoLock(streams ...string) (result RawWsSubStreamsResult, err error) {
+func (w *RawWs) subStreamsNoLock(streams ...string) (result StreamsSubResult, err error) {
 	defer func() {
-		if len(result.UnsubedStreams) > 0 {
+		if err == nil && len(result.UnsubedStreams) > 0 {
 			err = ErrNotAllStreamSubed
 		}
 	}()
@@ -361,7 +393,7 @@ func (w *RawWs) subStreamsNoLock(streams ...string) (result RawWsSubStreamsResul
 // Sub sub streams, binance dose not check stream validity,
 // even if the stream is not valid, it will return success
 // so we need to check the stream validity by ourselves
-func (w *RawWs) Sub(streams ...string) (result RawWsSubStreamsResult, err error) {
+func (w *RawWs) Sub(streams ...string) (result StreamsSubResult, err error) {
 	w.gmu.Lock()
 	defer w.gmu.Unlock()
 	return w.subStreamsNoLock(streams...)

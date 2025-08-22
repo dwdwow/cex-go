@@ -233,7 +233,7 @@ func startNewOrderBookBaseWs(symbolType cex.SymbolType, logger *slog.Logger) (ws
 	}
 	logger = logger.With("bnc_ob_base_clt", symbolType)
 	wsCfg := DefaultPublicWsCfg(symbolType)
-	wsCfg.MaxStream = maxObWsStream
+	wsCfg.MaxStream = maxWsStream
 	raw, err := StartNewRawWs(wsCfg, logger)
 	if err != nil {
 		return
@@ -357,17 +357,18 @@ func (oc *orderBookBaseWs) close() {
 
 func (oc *orderBookBaseWs) listener() {
 	for {
-		msg := oc.rawWs.Wait()
-		if errors.Is(msg.Err, ErrWsClientClosed) {
+		msg, err := oc.rawWs.Wait()
+		if err != nil {
+			oc.logger.Error("bnc: ob base ws listener error", "err", err)
+		}
+		if errors.Is(err, ErrWsClientClosed) {
 			return
 		}
-		oc.handle(msg)
+		oc.handle(msg, err)
 	}
 }
 
-func (oc *orderBookBaseWs) handle(msg RawWsMsg) {
-	data := msg.Data
-	err := msg.Err
+func (oc *orderBookBaseWs) handle(data []byte, err error) {
 	if err != nil {
 		go oc.broadcastObs(oc.makeAllEmptyObs(err))
 		return
