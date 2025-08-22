@@ -166,18 +166,22 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 	for _, symbol := range symbols {
 		chDepth, err := wsDepth.NewCh(symbolType, symbol)
 		if err != nil {
+			fmt.Println(symbol, err)
 			panic(err)
 		}
 		chRedunDepth, err := redunWsDepth.NewCh(symbolType, symbol)
 		if err != nil {
+			fmt.Println(symbol, err)
 			panic(err)
 		}
 		chBookTicker, err := wsBookTicker.NewCh(symbolType, symbol)
 		if err != nil {
+			fmt.Println(symbol, err)
 			panic(err)
 		}
 		chRedunBookTicker, err := redunWsBookTicker.NewCh(symbolType, symbol)
 		if err != nil {
+			fmt.Println(symbol, err)
 			panic(err)
 		}
 		CacheSymbolDepthUpdateAndBookTicker(
