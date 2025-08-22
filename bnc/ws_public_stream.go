@@ -1,7 +1,6 @@
 package bnc
 
 import (
-	"errors"
 	"log/slog"
 	"os"
 	"sync"
@@ -119,7 +118,7 @@ func (mw *PublicStreamMergedHandler[S]) Unsub(symbols ...string) (err error) {
 func (mw *PublicStreamMergedHandler[S]) NewCh(symbol string) (ch <-chan PublicStreamMsg[S], err error) {
 	clt, ok := mw.wsByStream.GetVWithOk(mw.kit.Stream(mw.symbolType, symbol))
 	if !ok {
-		return nil, errors.New("bnc: symbol not found")
+		return nil, ErrSymbolNotFound
 	}
 	return clt.NewCh(symbol), nil
 }
