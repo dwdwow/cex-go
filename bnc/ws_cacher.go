@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"sync"
 	"time"
 
 	"github.com/dwdwow/cex-go"
@@ -13,14 +12,13 @@ import (
 )
 
 func CacheSymbolDepthUpdateAndBookTicker(symbolType cex.SymbolType, symbol, mongoUri, dbName string, depthCh, redunDepthCh <-chan PublicStreamMsg[WsDepthStream], bookTickerCh, redunBookTickerCh <-chan PublicStreamMsg[WsBookTickerStream]) {
-	client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
-	if err != nil {
-		slog.Error("Can not connect mongo server", "err", err, "uri", mongoUri)
-		panic(err)
-	}
-	db := client.Database(dbName)
-
 	go func() {
+		client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
+		if err != nil {
+			slog.Error("Can not connect mongo server", "err", err, "uri", mongoUri)
+			panic(err)
+		}
+		db := client.Database(dbName)
 		coll := db.Collection("ob_" + string(symbolType))
 		for {
 			publicRestLimitter.Wait(context.Background())
@@ -42,6 +40,12 @@ func CacheSymbolDepthUpdateAndBookTicker(symbolType cex.SymbolType, symbol, mong
 	}()
 
 	go func() {
+		client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
+		if err != nil {
+			slog.Error("Can not connect mongo server", "err", err, "uri", mongoUri)
+			panic(err)
+		}
+		db := client.Database(dbName)
 		coll := db.Collection("depth_" + symbol + "_" + string(symbolType))
 		var latestEventTime int64
 		var msgs []any
@@ -72,6 +76,12 @@ func CacheSymbolDepthUpdateAndBookTicker(symbolType cex.SymbolType, symbol, mong
 	}()
 
 	go func() {
+		client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
+		if err != nil {
+			slog.Error("Can not connect mongo server", "err", err, "uri", mongoUri)
+			panic(err)
+		}
+		db := client.Database(dbName)
 		coll := db.Collection("book_ticker_" + symbol + "_" + string(symbolType))
 		var latestOrderUpdateId int64
 		var msgs []any
@@ -141,13 +151,13 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 		fmt.Println(unsubed)
 		panic(err)
 	}
-	var mu sync.Mutex
-	mu.Lock()
+	// var mu sync.Mutex
+	// mu.Lock()
 	depthRedunChs := map[string]chan PublicStreamMsg[WsDepthStream]{}
 	for _, symbol := range symbols {
 		depthRedunChs[symbol] = make(chan PublicStreamMsg[WsDepthStream], 1000)
 	}
-	mu.Unlock()
+	// mu.Unlock()
 	go func() {
 		time.Sleep(time.Hour)
 		unsubed, err := redunWsDepth.Sub(symbolType, symbols...)
@@ -155,7 +165,7 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 			fmt.Println(unsubed)
 			panic(err)
 		}
-		mu.Lock()
+		// mu.Lock()
 		for symbol, ch := range depthRedunChs {
 			nc, err := redunWsDepth.NewCh(symbolType, symbol)
 			if err != nil {
@@ -168,7 +178,7 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 				}
 			}()
 		}
-		mu.Unlock()
+		// mu.Unlock()
 	}()
 
 	unsubed, err = wsBookTicker.Sub(symbolType, symbols...)
@@ -176,12 +186,12 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 		fmt.Println(unsubed)
 		panic(err)
 	}
-	mu.Lock()
+	// mu.Lock()
 	bookTickerRedunChs := map[string]chan PublicStreamMsg[WsBookTickerStream]{}
 	for _, symbol := range symbols {
 		bookTickerRedunChs[symbol] = make(chan PublicStreamMsg[WsBookTickerStream], 1000)
 	}
-	mu.Unlock()
+	// mu.Unlock()
 	go func() {
 		time.Sleep(time.Hour)
 		unsubed, err := redunWsBookTicker.Sub(symbolType, symbols...)
@@ -189,7 +199,7 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 			fmt.Println(unsubed)
 			panic(err)
 		}
-		mu.Lock()
+		// mu.Lock()
 		for symbol, ch := range bookTickerRedunChs {
 			nc, err := redunWsBookTicker.NewCh(symbolType, symbol)
 			if err != nil {
@@ -202,7 +212,7 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 				}
 			}()
 		}
-		mu.Unlock()
+		// mu.Unlock()
 	}()
 
 	for _, symbol := range symbols {
