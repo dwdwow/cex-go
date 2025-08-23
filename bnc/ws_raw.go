@@ -171,8 +171,6 @@ func (w *RawWs) startNoLock() error {
 
 	w.logger.Info("Starting")
 
-	rawWsStartAfterErrLimiter.Wait(w.ctx)
-
 	if w.ctxCancel != nil {
 		w.ctxCancel()
 	}
@@ -180,6 +178,8 @@ func (w *RawWs) startNoLock() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	w.ctx = ctx
 	w.ctxCancel = cancel
+
+	rawWsStartAfterErrLimiter.Wait(w.ctx)
 
 	if w.conn != nil {
 		_ = w.conn.Close()
