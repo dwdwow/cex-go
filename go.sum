@@ -8,8 +8,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f h1:lO4WD4F/rVNCu3HqELle0jiPLLBs70cWOduZpkS1E78=
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
-github.com/dwdwow/limiter-go v0.0.10 h1:TYzVY11xF/uqOC2UjPang1AEPd/rJdnAJjUKmjosXqc=
-github.com/dwdwow/limiter-go v0.0.10/go.mod h1:ycTVVi2F5hu4nsvEZo+Mkj9YMEBRXjg29V/eH3ckxK8=
+github.com/dwdwow/limiter-go v0.0.11 h1:3Ybm4oqFEQEfEeFEjS5dunaV/cpWSALmyw+L5tLzmts=
+github.com/dwdwow/limiter-go v0.0.11/go.mod h1:ycTVVi2F5hu4nsvEZo+Mkj9YMEBRXjg29V/eH3ckxK8=
 github.com/dwdwow/props v0.0.18 h1:4kgKPuxuQxRdte4TgCCovrLfUe5JDFbW9l/B/zBFRro=
 github.com/dwdwow/props v0.0.18/go.mod h1:dWhnhFKeTzqSbKlYuNzY6QhJv93eE9Yq/t3O61QMybA=
 github.com/dwdwow/spub v0.0.1 h1:ys7aCCCOdeqhi+9nuGlosWmhYqnwKAD0fDHuBeTQ2Vw=

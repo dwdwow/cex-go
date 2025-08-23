@@ -146,6 +146,9 @@ func (w *RawWs) start() error {
 	return w.startNoLock()
 }
 
+// 500 / 5min
+var rawWsStartAfterErrLimiter = limiter.New(time.Minute, 80)
+
 func (w *RawWs) startNoLock() error {
 	switch w.status {
 	case RAW_WS_STATUS_STARTED:
@@ -167,6 +170,8 @@ func (w *RawWs) startNoLock() error {
 	}()
 
 	w.logger.Info("Starting")
+
+	rawWsStartAfterErrLimiter.Wait(w.ctx)
 
 	if w.ctxCancel != nil {
 		w.ctxCancel()
@@ -236,10 +241,11 @@ func (w *RawWs) restartAfterErr() error {
 	if w.status == RAW_WS_STATUS_CLOSED {
 		return ErrWsClientClosed
 	}
-	if w.status != RAW_WS_STATUS_STARTED {
-		return fmt.Errorf("bnc: ws client status is %d, cannot restart", w.status)
-	}
+	// if w.status != RAW_WS_STATUS_STARTED {
+	// 	return fmt.Errorf("bnc: ws client status is %d, cannot restart", w.status)
+	// }
 	w.status = RAW_WS_STATUS_NEW
+	time.Sleep(time.Second)
 	return w.startNoLock()
 }
 
