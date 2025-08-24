@@ -116,6 +116,9 @@ func (c *MongoObClient) Run() (err error) {
 			{Key: "$gte", Value: o.LastUpdateID},
 		}},
 	})
+	if err != nil {
+		return
+	}
 	c._exist.SetKV(c.cfg.Symbol, true)
 	return
 }
