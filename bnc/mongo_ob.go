@@ -3,7 +3,6 @@ package bnc
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -92,9 +91,12 @@ func (c *MongoObClient) Run() (err error) {
 	obColl := c.db.Collection("ob_" + string(c.cfg.SymbolType))
 	res := obColl.FindOne(c.ctx, bson.D{
 		{Key: "symbol", Value: c.cfg.Symbol},
-		{Key: "localTime", Value: c.cfg.StartTime.UnixNano()},
+		{Key: "localTime", Value: bson.D{
+			{Key: "$gte", Value: c.cfg.StartTime.UnixNano()},
+		}},
 	})
-	if res.Err() != nil {
+	err = res.Err()
+	if err != nil {
 		return
 	}
 	var o OrderBook
@@ -119,9 +121,6 @@ func (c *MongoObClient) Run() (err error) {
 	})
 	if err != nil {
 		return
-	}
-	if c.cur.Next(c.ctx) {
-		fmt.Println("true")
 	}
 	c._exist.SetKV(c.cfg.Symbol, true)
 	return
