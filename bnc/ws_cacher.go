@@ -12,13 +12,13 @@ import (
 )
 
 func CacheSymbolDepthUpdateAndBookTicker(symbolType cex.SymbolType, symbol, mongoUri, dbName string, depthCh, redunDepthCh <-chan PublicStreamMsg[WsDepthStream], bookTickerCh, redunBookTickerCh <-chan PublicStreamMsg[WsBookTickerStream]) {
+	client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
+	if err != nil {
+		slog.Error("Can not connect mongo server", "err", err, "uri", mongoUri)
+		panic(err)
+	}
+	db := client.Database(dbName)
 	go func() {
-		client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
-		if err != nil {
-			slog.Error("Can not connect mongo server", "err", err, "uri", mongoUri)
-			panic(err)
-		}
-		db := client.Database(dbName)
 		coll := db.Collection("ob_" + string(symbolType))
 		for {
 			publicRestLimitter.Wait(context.Background())
@@ -40,12 +40,6 @@ func CacheSymbolDepthUpdateAndBookTicker(symbolType cex.SymbolType, symbol, mong
 	}()
 
 	go func() {
-		client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
-		if err != nil {
-			slog.Error("Can not connect mongo server", "err", err, "uri", mongoUri)
-			panic(err)
-		}
-		db := client.Database(dbName)
 		coll := db.Collection("depth_" + symbol + "_" + string(symbolType))
 		var latestEventTime int64
 		var msgs []any
@@ -76,12 +70,6 @@ func CacheSymbolDepthUpdateAndBookTicker(symbolType cex.SymbolType, symbol, mong
 	}()
 
 	go func() {
-		client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
-		if err != nil {
-			slog.Error("Can not connect mongo server", "err", err, "uri", mongoUri)
-			panic(err)
-		}
-		db := client.Database(dbName)
 		coll := db.Collection("book_ticker_" + symbol + "_" + string(symbolType))
 		var latestOrderUpdateId int64
 		var msgs []any
@@ -275,7 +263,7 @@ func CacheOneSymbolAggTrades(symbolType cex.SymbolType, symbol, mongoUri, dbName
 			if len(msgs) > 1000 {
 				_, err = coll.InsertMany(context.Background(), msgs)
 				if err != nil {
-					slog.Error("bnc: insert agg trades to mongo failed", "err", err, "agg_trades", msgs)
+					slog.Error("bnc: insert agg trades to mongo failed", "err", err, "agg_trades_len", len(msgs))
 					panic(err)
 				}
 				msgs = nil
