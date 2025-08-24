@@ -17,10 +17,11 @@ import (
 )
 
 type MongoObClientCfg struct {
-	SymbolType cex.SymbolType
-	Symbol     string
+	// default is mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000
 	MongoUri   string
 	DbName     string
+	SymbolType cex.SymbolType
+	Symbol     string
 	StartTime  time.Time
 }
 
@@ -52,6 +53,9 @@ func NewMongoObClient(ctx context.Context, cfg MongoObClientCfg, logger *slog.Lo
 		ctx = context.Background()
 	}
 	ctx, cancel := context.WithCancel(ctx)
+	if cfg.MongoUri == "" {
+		cfg.MongoUri = "mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000"
+	}
 	return &MongoObClient{
 		ctx:       ctx,
 		cancel:    cancel,
