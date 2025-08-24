@@ -11,6 +11,7 @@ func main() {
 		"ETHUSDT",
 		"SOLUSDT",
 		"1000PEPEUSDT",
+		"HYPEUSDT",
 	})
 	bnc.CacheAggTrades(cex.SYMBOL_TYPE_SPOT, []string{
 		"BTCUSDT",
