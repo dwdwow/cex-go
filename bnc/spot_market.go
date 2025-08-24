@@ -3,6 +3,7 @@ package bnc
 import (
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/dwdwow/cex-go/ob"
 )
@@ -35,6 +36,10 @@ type OrderBook struct {
 	// CM Futures
 	Symbol string `json:"symbol,omitempty" bson:"symbol,omitempty"`
 	Pair   string `json:"pair,omitempty" bson:"pair,omitempty"`
+
+	// LocalTime is the time when the order book is fetched from the server
+	// add in local code
+	LocalTime int64 `json:"localTime,omitempty" bson:"localTime,omitempty"`
 }
 
 type ParamsOrderBook struct {
@@ -84,6 +89,7 @@ func GetSpotOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 	}
 	orderBook.Symbol = params.Symbol
 	orderBook.Pair = params.Symbol
+	orderBook.LocalTime = time.Now().UnixMicro()
 	return
 }
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dwdwow/cex-go/ob"
 )
@@ -54,6 +55,7 @@ func GetUMOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 	}
 	orderBook.Symbol = rawOrderBook.Symbol
 	orderBook.Pair = rawOrderBook.Pair
+	orderBook.LocalTime = time.Now().UnixMicro()
 	return
 }
 

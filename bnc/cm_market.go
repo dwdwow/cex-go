@@ -3,6 +3,7 @@ package bnc
 import (
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/dwdwow/cex-go/ob"
 )
@@ -50,6 +51,7 @@ func GetCMOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 			}
 		}
 	}
+	orderBook.LocalTime = time.Now().UnixMicro()
 	return
 }
 
