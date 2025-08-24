@@ -3,6 +3,7 @@ package bnc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -119,7 +120,9 @@ func (c *MongoObClient) Run() (err error) {
 	if err != nil {
 		return
 	}
-	c.cur.Next(c.ctx)
+	if c.cur.Next(c.ctx) {
+		fmt.Println("true")
+	}
 	c._exist.SetKV(c.cfg.Symbol, true)
 	return
 }

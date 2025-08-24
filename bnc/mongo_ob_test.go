@@ -18,13 +18,13 @@ func TestMongoObClient(t *testing.T) {
 		DbName:     "bnc_realtime_cache",
 		StartTime:  time.Now().Add(-time.Hour),
 	}
-	client := NewMongoObClient(context.Background(), cfg, nil)
-	err := client.Run()
+	clt := NewMongoObClient(context.Background(), cfg, nil)
+	err := clt.Run()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for {
-		obData, err := client.Read()
+		obData, err := clt.Read()
 		if err != nil {
 			t.Fatal(err)
 		}
