@@ -140,6 +140,7 @@ func (c *MongoObClient) Read() (obData ob.Data[WsDepthStream], err error) {
 	buffer = append(buffer, depthData)
 	c._cache.SetKV(c.cfg.Symbol, buffer)
 	obData = c.obUpdater(c, depthData)
+	c._ods.SetKV(c.cfg.Symbol, obData)
 	return
 }
 
