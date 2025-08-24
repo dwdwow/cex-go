@@ -119,14 +119,14 @@ func (c *MongoObClient) Run() (err error) {
 	if err != nil {
 		return
 	}
-	if c.cur == nil {
-		panic("cur is nil")
-	}
 	c._exist.SetKV(c.cfg.Symbol, true)
 	return
 }
 
 func (c *MongoObClient) Read() (obData ob.Data[WsDepthStream], err error) {
+	if c.ctx == nil {
+		panic("ctx is nil")
+	}
 	if !c.cur.Next(c.ctx) {
 		err = errors.New("bnc: no more depth update data in mongodb")
 		return
