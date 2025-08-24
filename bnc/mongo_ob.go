@@ -110,19 +110,16 @@ func (c *MongoObClient) Run() (err error) {
 		Asks:       o.Asks,
 		Bids:       o.Bids,
 	})
-	cur, err := c.coll.Find(c.ctx, bson.D{
+	c.cur, err = c.coll.Find(c.ctx, bson.D{
 		{Key: "s", Value: c.cfg.Symbol},
 		{Key: "u", Value: bson.D{
 			{Key: "$gte", Value: o.LastUpdateID},
 		}},
 	})
-	if cur == nil {
-		panic("cur is nil")
-	}
 	if err != nil {
 		return
 	}
-	c.cur = cur
+	c.cur.Next(c.ctx)
 	c._exist.SetKV(c.cfg.Symbol, true)
 	return
 }
