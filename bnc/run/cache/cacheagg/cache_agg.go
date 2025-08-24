@@ -18,4 +18,5 @@ func main() {
 		"SOLUSDT",
 		"PEPEUSDT",
 	})
+	select {}
 }
