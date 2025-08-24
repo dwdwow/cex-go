@@ -152,12 +152,10 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 		panic(err)
 	}
 	// var mu sync.Mutex
-	// mu.Lock()
 	depthRedunChs := map[string]chan PublicStreamMsg[WsDepthStream]{}
 	for _, symbol := range symbols {
 		depthRedunChs[symbol] = make(chan PublicStreamMsg[WsDepthStream], 1000)
 	}
-	// mu.Unlock()
 	go func() {
 		time.Sleep(time.Hour)
 		unsubed, err := redunWsDepth.Sub(symbolType, symbols...)
@@ -165,7 +163,6 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 			fmt.Println(unsubed)
 			panic(err)
 		}
-		// mu.Lock()
 		for symbol, ch := range depthRedunChs {
 			nc, err := redunWsDepth.NewCh(symbolType, symbol)
 			if err != nil {
@@ -178,7 +175,6 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 				}
 			}()
 		}
-		// mu.Unlock()
 	}()
 
 	unsubed, err = wsBookTicker.Sub(symbolType, symbols...)
@@ -186,12 +182,10 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 		fmt.Println(unsubed)
 		panic(err)
 	}
-	// mu.Lock()
 	bookTickerRedunChs := map[string]chan PublicStreamMsg[WsBookTickerStream]{}
 	for _, symbol := range symbols {
 		bookTickerRedunChs[symbol] = make(chan PublicStreamMsg[WsBookTickerStream], 1000)
 	}
-	// mu.Unlock()
 	go func() {
 		time.Sleep(time.Hour)
 		unsubed, err := redunWsBookTicker.Sub(symbolType, symbols...)
@@ -199,7 +193,6 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 			fmt.Println(unsubed)
 			panic(err)
 		}
-		// mu.Lock()
 		for symbol, ch := range bookTickerRedunChs {
 			nc, err := redunWsBookTicker.NewCh(symbolType, symbol)
 			if err != nil {
@@ -212,7 +205,6 @@ func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
 				}
 			}()
 		}
-		// mu.Unlock()
 	}()
 
 	for _, symbol := range symbols {
