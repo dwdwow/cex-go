@@ -3,10 +3,12 @@ package bnc
 import (
 	"context"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/dwdwow/cex-go"
 	"github.com/dwdwow/cex-go/ob"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -52,9 +54,27 @@ func (c *MongoDbClient) Run() (err error) {
 	c.db = clt.Database(c.cfg.DbName)
 	c.coll = c.db.Collection(c.cfg.Symbol)
 	c.obColl = c.db.Collection("ob_" + string(c.cfg.SymbolType))
-
-	// res := c.coll.FindOne(c.ctx, bson.D{{"symbol", c.cfg.Symbol}})
-
+	res := c.coll.FindOne(c.ctx, bson.D{
+		{Key: "symbol", Value: c.cfg.Symbol},
+		{Key: "localTime", Value: c.cfg.StartTime.UnixNano()},
+	})
+	if res.Err() != nil {
+		return
+	}
+	var o OrderBook
+	err = res.Decode(&o)
+	if err != nil {
+		return
+	}
+	c.od = ob.Data[WsDepthStream]{
+		Cex:        cex.BINANCE,
+		Type:       c.cfg.SymbolType,
+		Symbol:     o.Symbol,
+		Version:    strconv.FormatInt(o.LastUpdateID, 10),
+		UpdateTime: time.Now().UnixNano(),
+		Asks:       o.Asks,
+		Bids:       o.Bids,
+	}
 	return
 }
 

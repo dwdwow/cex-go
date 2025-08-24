@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dwdwow/cex-go"
 	"github.com/dwdwow/cex-go/ob"
 )
 
@@ -55,7 +56,8 @@ func GetUMOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 	}
 	orderBook.Symbol = rawOrderBook.Symbol
 	orderBook.Pair = rawOrderBook.Pair
-	orderBook.LocalTime = time.Now().UnixMicro()
+	orderBook.LocalTime = time.Now().UnixNano()
+	orderBook.SymbolType = cex.SYMBOL_TYPE_UM_FUTURES
 	return
 }
 

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dwdwow/cex-go"
 	"github.com/dwdwow/cex-go/ob"
 )
 
@@ -38,8 +39,10 @@ type OrderBook struct {
 	Pair   string `json:"pair,omitempty" bson:"pair,omitempty"`
 
 	// LocalTime is the time when the order book is fetched from the server
-	// add in local code
+	// add in local code, use nanoseconds
 	LocalTime int64 `json:"localTime,omitempty" bson:"localTime,omitempty"`
+	// add in local code
+	SymbolType cex.SymbolType `json:"symbolType,omitempty" bson:"symbolType,omitempty"`
 }
 
 type ParamsOrderBook struct {
@@ -89,7 +92,8 @@ func GetSpotOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 	}
 	orderBook.Symbol = params.Symbol
 	orderBook.Pair = params.Symbol
-	orderBook.LocalTime = time.Now().UnixMicro()
+	orderBook.LocalTime = time.Now().UnixNano()
+	orderBook.SymbolType = cex.SYMBOL_TYPE_SPOT
 	return
 }
 

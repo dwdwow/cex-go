@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dwdwow/cex-go"
 	"github.com/dwdwow/cex-go/ob"
 )
 
@@ -51,7 +52,8 @@ func GetCMOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 			}
 		}
 	}
-	orderBook.LocalTime = time.Now().UnixMicro()
+	orderBook.LocalTime = time.Now().UnixNano()
+	orderBook.SymbolType = cex.SYMBOL_TYPE_CM_FUTURES
 	return
 }
 
