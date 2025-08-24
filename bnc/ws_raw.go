@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/dwdwow/limiter-go"
-	"github.com/dwdwow/props"
 	"github.com/gorilla/websocket"
 )
 
@@ -53,10 +52,6 @@ type RawWs struct {
 
 	reqLimiter *limiter.Limiter
 
-	// raw ws dose not use this channel
-	// just for high level ws client to wait response
-	respByReqId *props.SafeRWMap[int64, chan WsResp[any]]
-
 	logger *slog.Logger
 }
 
@@ -74,13 +69,12 @@ func NewRawWs(cfg RawWsCfg, logger *slog.Logger) *RawWs {
 		})
 	}
 	return &RawWs{
-		ctx:         ctx,
-		ctxCancel:   cancel,
-		cfg:         cfg,
-		user:        user,
-		reqLimiter:  limiter.New(time.Second, cfg.MaxReqPerSecond),
-		respByReqId: props.NewSafeRWMap[int64, chan WsResp[any]](),
-		logger:      logger,
+		ctx:        ctx,
+		ctxCancel:  cancel,
+		cfg:        cfg,
+		user:       user,
+		reqLimiter: limiter.New(time.Second, cfg.MaxReqPerSecond),
+		logger:     logger,
 	}
 }
 
@@ -98,13 +92,12 @@ func StartNewRawWs(cfg RawWsCfg, logger *slog.Logger) (ws *RawWs, err error) {
 		})
 	}
 	ws = &RawWs{
-		ctx:         ctx,
-		ctxCancel:   cancel,
-		cfg:         cfg,
-		user:        user,
-		reqLimiter:  limiter.New(time.Second, cfg.MaxReqPerSecond),
-		respByReqId: props.NewSafeRWMap[int64, chan WsResp[any]](),
-		logger:      logger,
+		ctx:        ctx,
+		ctxCancel:  cancel,
+		cfg:        cfg,
+		user:       user,
+		reqLimiter: limiter.New(time.Second, cfg.MaxReqPerSecond),
+		logger:     logger,
 	}
 	err = ws.start()
 	return
@@ -335,12 +328,7 @@ func (w *RawWs) sendMsgNoLock(method WsMethod, params any) (id int64, err error)
 	if err != nil {
 		return
 	}
-	w.respByReqId.SetKV(id, make(chan WsResp[any], 1))
 	return
-}
-
-func (w *RawWs) RespCh(id int64) (ch <-chan WsResp[any], ok bool) {
-	return w.respByReqId.GetVWithOk(id)
 }
 
 func rawWsNewStreamFilter(oldStreams, subingStreams []string, maxStreams int) (existedStreams, newStreams, remainingParams []string) {
