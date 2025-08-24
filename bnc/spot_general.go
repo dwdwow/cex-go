@@ -37,38 +37,38 @@ func GetSpotServerTime() (serverTime ServerTime, err error) {
 }
 
 type ParamsSpotExchangeInfo struct {
-	Symbol             string              `json:"symbol,omitempty"`
-	Symbols            []string            `json:"symbols,omitempty"`
-	Permissions        []AcctSybPermission `json:"permissions,omitempty"`
-	ShowPermissionSets *bool               `json:"showPermissionSets,omitempty"`
-	SymbolStatus       SymbolStatus        `json:"symbolStatus,omitempty"`
+	Symbol             string              `json:"symbol,omitempty" bson:"symbol,omitempty"`
+	Symbols            []string            `json:"symbols,omitempty" bson:"symbols,omitempty"`
+	Permissions        []AcctSybPermission `json:"permissions,omitempty" bson:"permissions,omitempty"`
+	ShowPermissionSets *bool               `json:"showPermissionSets,omitempty" bson:"showPermissionSets,omitempty"`
+	SymbolStatus       SymbolStatus        `json:"symbolStatus,omitempty" bson:"symbolStatus,omitempty"`
 }
 
 type SpotExchangeSymbol struct {
-	Symbol                          string                `json:"symbol"`
-	Status                          SymbolStatus          `json:"status"`
-	BaseAsset                       string                `json:"baseAsset"`
-	BaseAssetPrecision              int64                 `json:"baseAssetPrecision"`
-	QuoteAsset                      string                `json:"quoteAsset"`
-	QuotePrecision                  int64                 `json:"quotePrecision"`
-	QuoteAssetPrecision             int64                 `json:"quoteAssetPrecision"`
-	BaseCommissionPrecision         int64                 `json:"baseCommissionPrecision"`
-	QuoteCommissionPrecision        int64                 `json:"quoteCommissionPrecision"`
-	OrderTypes                      []OrderType           `json:"orderTypes"`
-	IcebergAllowed                  bool                  `json:"icebergAllowed"`
-	OcoAllowed                      bool                  `json:"ocoAllowed"`
-	OtoAllowed                      bool                  `json:"otoAllowed"`
-	QuoteOrderQtyMarketAllowed      bool                  `json:"quoteOrderQtyMarketAllowed"`
-	AllowTrailingStop               bool                  `json:"allowTrailingStop"`
-	CancelReplaceAllowed            bool                  `json:"cancelReplaceAllowed"`
-	AmendAllowed                    bool                  `json:"amendAllowed"`
-	IsSpotTradingAllowed            bool                  `json:"isSpotTradingAllowed"`
-	IsMarginTradingAllowed          bool                  `json:"isMarginTradingAllowed"`
-	Filters                         []map[string]any      `json:"filters"`
-	Permissions                     []AcctSybPermission   `json:"permissions"`
-	PermissionSets                  [][]AcctSybPermission `json:"permissionSets"`
-	DefaultSelfTradePreventionMode  string                `json:"defaultSelfTradePreventionMode"`
-	AllowedSelfTradePreventionModes []string              `json:"allowedSelfTradePreventionModes"`
+	Symbol                          string                `json:"symbol" bson:"symbol"`
+	Status                          SymbolStatus          `json:"status" bson:"status"`
+	BaseAsset                       string                `json:"baseAsset" bson:"baseAsset"`
+	BaseAssetPrecision              int64                 `json:"baseAssetPrecision" bson:"baseAssetPrecision"`
+	QuoteAsset                      string                `json:"quoteAsset" bson:"quoteAsset"`
+	QuotePrecision                  int64                 `json:"quotePrecision" bson:"quotePrecision"`
+	QuoteAssetPrecision             int64                 `json:"quoteAssetPrecision" bson:"quoteAssetPrecision"`
+	BaseCommissionPrecision         int64                 `json:"baseCommissionPrecision" bson:"baseCommissionPrecision"`
+	QuoteCommissionPrecision        int64                 `json:"quoteCommissionPrecision" bson:"quoteCommissionPrecision"`
+	OrderTypes                      []OrderType           `json:"orderTypes" bson:"orderTypes"`
+	IcebergAllowed                  bool                  `json:"icebergAllowed" bson:"icebergAllowed"`
+	OcoAllowed                      bool                  `json:"ocoAllowed" bson:"ocoAllowed"`
+	OtoAllowed                      bool                  `json:"otoAllowed" bson:"otoAllowed"`
+	QuoteOrderQtyMarketAllowed      bool                  `json:"quoteOrderQtyMarketAllowed" bson:"quoteOrderQtyMarketAllowed"`
+	AllowTrailingStop               bool                  `json:"allowTrailingStop" bson:"allowTrailingStop"`
+	CancelReplaceAllowed            bool                  `json:"cancelReplaceAllowed" bson:"cancelReplaceAllowed"`
+	AmendAllowed                    bool                  `json:"amendAllowed" bson:"amendAllowed"`
+	IsSpotTradingAllowed            bool                  `json:"isSpotTradingAllowed" bson:"isSpotTradingAllowed"`
+	IsMarginTradingAllowed          bool                  `json:"isMarginTradingAllowed" bson:"isMarginTradingAllowed"`
+	Filters                         []map[string]any      `json:"filters" bson:"filters"`
+	Permissions                     []AcctSybPermission   `json:"permissions" bson:"permissions"`
+	PermissionSets                  [][]AcctSybPermission `json:"permissionSets" bson:"permissionSets"`
+	DefaultSelfTradePreventionMode  string                `json:"defaultSelfTradePreventionMode" bson:"defaultSelfTradePreventionMode"`
+	AllowedSelfTradePreventionModes []string              `json:"allowedSelfTradePreventionModes" bson:"allowedSelfTradePreventionModes"`
 }
 
 func GetPrecJustForBinanceFilter(size string) (int, error) {
@@ -175,24 +175,24 @@ func GetSpotSymbols() (symbols []cex.Symbol, err error) {
 }
 
 type RateLimier struct {
-	RateLimitType RateLimitType       `json:"rateLimitType"`
-	Interval      RateLimiterInterval `json:"interval"`
-	IntervalNum   int64               `json:"intervalNum"`
-	Limit         int64               `json:"limit"`
+	RateLimitType RateLimitType       `json:"rateLimitType" bson:"rateLimitType"`
+	Interval      RateLimiterInterval `json:"interval" bson:"interval"`
+	IntervalNum   int64               `json:"intervalNum" bson:"intervalNum"`
+	Limit         int64               `json:"limit" bson:"limit"`
 }
 
 type SOR struct {
-	BaseAsset string   `json:"baseAsset"`
-	Symbols   []string `json:"symbols"`
+	BaseAsset string   `json:"baseAsset" bson:"baseAsset"`
+	Symbols   []string `json:"symbols" bson:"symbols"`
 }
 
 type SpotExchangeInfo struct {
-	Timezone        string               `json:"timezone"`
-	ServerTime      int64                `json:"serverTime"`
-	RateLimits      []RateLimier         `json:"rateLimits"`
-	ExchangeFilters []any                `json:"exchangeFilters"`
-	Symbols         []SpotExchangeSymbol `json:"symbols"`
-	Sors            []SOR                `json:"sors"`
+	Timezone        string               `json:"timezone" bson:"timezone"`
+	ServerTime      int64                `json:"serverTime" bson:"serverTime"`
+	RateLimits      []RateLimier         `json:"rateLimits" bson:"rateLimits"`
+	ExchangeFilters []any                `json:"exchangeFilters" bson:"exchangeFilters"`
+	Symbols         []SpotExchangeSymbol `json:"symbols" bson:"symbols"`
+	Sors            []SOR                `json:"sors" bson:"sors"`
 }
 
 func GetSpotExchangeInfo(params ParamsSpotExchangeInfo) (exchangeInfo SpotExchangeInfo, err error) {

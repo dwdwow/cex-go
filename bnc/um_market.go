@@ -3,6 +3,7 @@ package bnc
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/dwdwow/cex-go/ob"
 )
@@ -14,7 +15,13 @@ func GetUMRawOrderBook(params ParamsOrderBook) (orderBook RawOrderBook, err erro
 		Params:  params,
 	}
 	resp, err := Request[ParamsOrderBook, RawOrderBook](req)
-	return resp.Data, err
+	data := resp.Data
+	data.Symbol = params.Symbol
+	pair := data.Symbol
+	if strings.Contains(pair, "_") {
+		data.Pair = strings.Split(pair, "_")[0]
+	}
+	return data, err
 }
 
 func GetUMOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
@@ -45,6 +52,8 @@ func GetUMOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 			}
 		}
 	}
+	orderBook.Symbol = rawOrderBook.Symbol
+	orderBook.Pair = rawOrderBook.Pair
 	return
 }
 
@@ -206,18 +215,18 @@ func GetUMPremiumIndexKlines(params ParamsKlines) (klines []Kline, err error) {
 }
 
 type MarkPriceInfo struct {
-	Symbol          string  `json:"symbol"`
-	MarkPrice       float64 `json:"markPrice,string"`
-	IndexPrice      float64 `json:"indexPrice,string"`
-	EstSettlePrice  float64 `json:"estimatedSettlePrice,string"`
-	LastFundingRate float64 `json:"lastFundingRate,string"`
-	InterestRate    float64 `json:"interestRate,string"`
-	NextFundingTime int64   `json:"nextFundingTime"`
-	Time            int64   `json:"time"`
+	Symbol          string  `json:"symbol" bson:"symbol"`
+	MarkPrice       float64 `json:"markPrice,string" bson:"markPrice,string"`
+	IndexPrice      float64 `json:"indexPrice,string" bson:"indexPrice,string"`
+	EstSettlePrice  float64 `json:"estimatedSettlePrice,string" bson:"estimatedSettlePrice,string"`
+	LastFundingRate float64 `json:"lastFundingRate,string" bson:"lastFundingRate,string"`
+	InterestRate    float64 `json:"interestRate,string" bson:"interestRate,string"`
+	NextFundingTime int64   `json:"nextFundingTime" bson:"nextFundingTime"`
+	Time            int64   `json:"time" bson:"time"`
 }
 
 type ParamsMarkPriceInfo struct {
-	Symbol string `json:"symbol"`
+	Symbol string `json:"symbol" bson:"symbol"`
 }
 
 func GetUMMarkPriceInfo(params ParamsMarkPriceInfo) (markPriceInfo MarkPriceInfo, err error) {
@@ -243,17 +252,17 @@ func GetUMAllMarkPriceInfo() (markPriceInfos []MarkPriceInfo, err error) {
 }
 
 type FundingRate struct {
-	Symbol      string  `json:"symbol"`
-	FundingRate float64 `json:"fundingRate,string"`
-	FundingTime int64   `json:"fundingTime"`
-	MarkPrice   float64 `json:"markPrice,string"`
+	Symbol      string  `json:"symbol" bson:"symbol"`
+	FundingRate float64 `json:"fundingRate,string" bson:"fundingRate,string"`
+	FundingTime int64   `json:"fundingTime" bson:"fundingTime"`
+	MarkPrice   float64 `json:"markPrice,string" bson:"markPrice,string"`
 }
 
 type ParamsFundingRate struct {
-	Symbol    string `json:"symbol,omitempty"` // for um, default all symbols; for cm, is required
-	StartTime int64  `json:"startTime,omitempty"`
-	EndTime   int64  `json:"endTime,omitempty"`
-	Limit     int64  `json:"limit,omitempty"` // default 100, range [100, 1000]
+	Symbol    string `json:"symbol,omitempty" bson:"symbol,omitempty"` // for um, default all symbols; for cm, is required
+	StartTime int64  `json:"startTime,omitempty" bson:"startTime,omitempty"`
+	EndTime   int64  `json:"endTime,omitempty" bson:"endTime,omitempty"`
+	Limit     int64  `json:"limit,omitempty" bson:"limit,omitempty"` // default 100, range [100, 1000]
 }
 
 func GetUMFundingRateHistory(params ParamsFundingRate) (fundingRate []FundingRate, err error) {
@@ -267,11 +276,11 @@ func GetUMFundingRateHistory(params ParamsFundingRate) (fundingRate []FundingRat
 }
 
 type FundingInfo struct {
-	Symbol                   string `json:"symbol"`
-	AdjustedFundingRateCap   string `json:"adjustedFundingRateCap"`
-	AdjustedFundingRateFloor string `json:"adjustedFundingRateFloor"`
-	FundingIntervalHours     int64  `json:"fundingIntervalHours"`
-	Disclaimer               bool   `json:"disclaimer"` // ignored
+	Symbol                   string `json:"symbol" bson:"symbol"`
+	AdjustedFundingRateCap   string `json:"adjustedFundingRateCap" bson:"adjustedFundingRateCap"`
+	AdjustedFundingRateFloor string `json:"adjustedFundingRateFloor" bson:"adjustedFundingRateFloor"`
+	FundingIntervalHours     int64  `json:"fundingIntervalHours" bson:"fundingIntervalHours"`
+	Disclaimer               bool   `json:"disclaimer" bson:"disclaimer"` // ignored
 }
 
 func GetUMFundingInfoList() (fundingInfo []FundingInfo, err error) {
@@ -350,12 +359,12 @@ func GetUMTickerBookTickerList() (ticker []OrderBookTicker, err error) {
 }
 
 type DeliveryPrice struct {
-	DeliveryTime  int64   `json:"deliveryTime"`
-	DeliveryPrice float64 `json:"deliveryPrice"`
+	DeliveryTime  int64   `json:"deliveryTime" bson:"deliveryTime"`
+	DeliveryPrice float64 `json:"deliveryPrice" bson:"deliveryPrice"`
 }
 
 type ParamsDeliveryPrice struct {
-	Pair string `json:"pair"`
+	Pair string `json:"pair" bson:"pair"`
 }
 
 func GetUMDeliveryPriceList(params ParamsDeliveryPrice) (deliveryPrice []DeliveryPrice, err error) {
@@ -372,16 +381,16 @@ func GetUMDeliveryPriceList(params ParamsDeliveryPrice) (deliveryPrice []Deliver
 }
 
 type OpenInterest struct {
-	Symbol       string  `json:"symbol"`
-	OpenInterest float64 `json:"openInterest,string"`
-	Time         int64   `json:"time"`
+	Symbol       string  `json:"symbol" bson:"symbol"`
+	OpenInterest float64 `json:"openInterest,string" bson:"openInterest,string"`
+	Time         int64   `json:"time" bson:"time"`
 	// CM Futures
-	Pair         string       `json:"pair"`
-	ContractType ContractType `json:"contractType"`
+	Pair         string       `json:"pair" bson:"pair"`
+	ContractType ContractType `json:"contractType" bson:"contractType"`
 }
 
 type ParamsOpenInterest struct {
-	Symbol string `json:"symbol"`
+	Symbol string `json:"symbol" bson:"symbol"`
 }
 
 func GetUMOpenInterest(params ParamsOpenInterest) (openInterest OpenInterest, err error) {
@@ -398,18 +407,18 @@ func GetUMOpenInterest(params ParamsOpenInterest) (openInterest OpenInterest, er
 }
 
 type UMOpenInterestStats struct {
-	Symbol               string  `json:"symbol"`
-	SumOpenInterest      float64 `json:"sumOpenInterest,string"`
-	SumOpenInterestValue float64 `json:"sumOpenInterestValue,string"`
-	CMCCirculatingSupply float64 `json:"CMCCirculatingSupply,string"`
-	Timestamp            int64   `json:"timestamp"`
+	Symbol               string  `json:"symbol" bson:"symbol"`
+	SumOpenInterest      float64 `json:"sumOpenInterest,string" bson:"sumOpenInterest,string"`
+	SumOpenInterestValue float64 `json:"sumOpenInterestValue,string" bson:"sumOpenInterestValue,string"`
+	CMCCirculatingSupply float64 `json:"CMCCirculatingSupply,string" bson:"CMCCirculatingSupply,string"`
+	Timestamp            int64   `json:"timestamp" bson:"timestamp"`
 }
 
 type ParamsUMOpenInterestStats struct {
-	Symbol    string `json:"symbol"`
-	Period    string `json:"period"` // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
-	Limit     int64  `json:"limit,omitempty"`
-	EndTime   int64  `json:"endTime,omitempty"`
+	Symbol    string `json:"symbol" bson:"symbol"`
+	Period    string `json:"period" bson:"period"` // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
+	Limit     int64  `json:"limit,omitempty" bson:"limit,omitempty"`
+	EndTime   int64  `json:"endTime,omitempty" bson:"endTime,omitempty"`
 	StartTime int64  `json:"startTime,omitempty"`
 }
 
@@ -430,19 +439,19 @@ func GetUMOpenInterestStats(params ParamsUMOpenInterestStats) (openInterestStats
 }
 
 type UMLongShortRatio struct {
-	Symbol         string  `json:"symbol"`                // e.g. "BTCUSDT"
-	LongShortRatio float64 `json:"longShortRatio,string"` // Long/short position/account ratio of top traders
-	LongAccount    float64 `json:"longAccount,string"`    // Long positions ratio of top traders
-	ShortAccount   float64 `json:"shortAccount,string"`   // Short positions ratio of top traders
-	Timestamp      int64   `json:"timestamp"`             // Unix timestamp in milliseconds
+	Symbol         string  `json:"symbol" bson:"symbol"`                               // e.g. "BTCUSDT"
+	LongShortRatio float64 `json:"longShortRatio,string" bson:"longShortRatio,string"` // Long/short position/account ratio of top traders
+	LongAccount    float64 `json:"longAccount,string" bson:"longAccount,string"`       // Long positions ratio of top traders
+	ShortAccount   float64 `json:"shortAccount,string" bson:"shortAccount,string"`     // Short positions ratio of top traders
+	Timestamp      int64   `json:"timestamp" bson:"timestamp"`                         // Unix timestamp in milliseconds
 }
 
 type ParamsUMLongShortRatio struct {
-	Symbol    string `json:"symbol"`
-	Period    string `json:"period"`          // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
-	Limit     int64  `json:"limit,omitempty"` // default 30, max 500
-	StartTime int64  `json:"startTime,omitempty"`
-	EndTime   int64  `json:"endTime,omitempty"`
+	Symbol    string `json:"symbol" bson:"symbol"`
+	Period    string `json:"period" bson:"period"`                   // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
+	Limit     int64  `json:"limit,omitempty" bson:"limit,omitempty"` // default 30, max 500
+	StartTime int64  `json:"startTime,omitempty" bson:"startTime,omitempty"`
+	EndTime   int64  `json:"endTime,omitempty" bson:"endTime,omitempty"`
 }
 
 func GetUMTopTraderLongShortPositionRatio(params ParamsUMLongShortRatio) (longShortRatio []UMLongShortRatio, err error) {
@@ -494,18 +503,18 @@ func GetUMGlobalLongShortAccountRatio(params ParamsUMLongShortRatio) (longShortR
 }
 
 type TakerBuySellRatio struct {
-	BuySellRatio float64 `json:"buySellRatio,string"`
-	BuyVol       float64 `json:"buyVol,string"`
-	SellVol      float64 `json:"sellVol,string"`
-	Timestamp    int64   `json:"timestamp"`
+	BuySellRatio float64 `json:"buySellRatio,string" bson:"buySellRatio,string"`
+	BuyVol       float64 `json:"buyVol,string" bson:"buyVol,string"`
+	SellVol      float64 `json:"sellVol,string" bson:"sellVol,string"`
+	Timestamp    int64   `json:"timestamp" bson:"timestamp"`
 }
 
 type ParamsTakerBuySellRatio struct {
-	Symbol    string `json:"symbol"`
-	Period    string `json:"period"`          // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
-	Limit     int64  `json:"limit,omitempty"` // default 30, max 500
-	StartTime int64  `json:"startTime,omitempty"`
-	EndTime   int64  `json:"endTime,omitempty"`
+	Symbol    string `json:"symbol" bson:"symbol"`
+	Period    string `json:"period" bson:"period"`                   // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
+	Limit     int64  `json:"limit,omitempty" bson:"limit,omitempty"` // default 30, max 500
+	StartTime int64  `json:"startTime,omitempty" bson:"startTime,omitempty"`
+	EndTime   int64  `json:"endTime,omitempty" bson:"endTime,omitempty"`
 }
 
 func GetUMTakerBuySellRatio(params ParamsTakerBuySellRatio) (takerBuySellRatio []TakerBuySellRatio, err error) {
@@ -525,23 +534,23 @@ func GetUMTakerBuySellRatio(params ParamsTakerBuySellRatio) (takerBuySellRatio [
 }
 
 type FuturesBasis struct {
-	IndexPrice          float64      `json:"indexPrice,string"`
-	ContractType        ContractType `json:"contractType"`
-	BasisRate           float64      `json:"basisRate,string"`
-	FuturesPrice        float64      `json:"futuresPrice,string"`
-	AnnualizedBasisRate string       `json:"annualizedBasisRate"`
-	Basis               float64      `json:"basis,string"`
-	Pair                string       `json:"pair"`
-	Timestamp           int64        `json:"timestamp"`
+	IndexPrice          float64      `json:"indexPrice,string" bson:"indexPrice,string"`
+	ContractType        ContractType `json:"contractType" bson:"contractType"`
+	BasisRate           float64      `json:"basisRate,string" bson:"basisRate,string"`
+	FuturesPrice        float64      `json:"futuresPrice,string" bson:"futuresPrice,string"`
+	AnnualizedBasisRate string       `json:"annualizedBasisRate" bson:"annualizedBasisRate"`
+	Basis               float64      `json:"basis,string" bson:"basis,string"`
+	Pair                string       `json:"pair" bson:"pair"`
+	Timestamp           int64        `json:"timestamp" bson:"timestamp"`
 }
 
 type ParamsFuturesBasis struct {
-	Pair         string       `json:"pair"`
-	ContractType ContractType `json:"contractType"`
-	Period       string       `json:"period"` // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
-	Limit        int64        `json:"limit"`  // [30, 500]
-	StartTime    int64        `json:"startTime,omitempty"`
-	EndTime      int64        `json:"endTime,omitempty"`
+	Pair         string       `json:"pair" bson:"pair"`
+	ContractType ContractType `json:"contractType" bson:"contractType"`
+	Period       string       `json:"period" bson:"period"` // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
+	Limit        int64        `json:"limit" bson:"limit"`   // [30, 500]
+	StartTime    int64        `json:"startTime,omitempty" bson:"startTime,omitempty"`
+	EndTime      int64        `json:"endTime,omitempty" bson:"endTime,omitempty"`
 }
 
 func GetUMFuturesBasis(params ParamsFuturesBasis) (futuresBasis []FuturesBasis, err error) {
@@ -564,21 +573,21 @@ func GetUMFuturesBasis(params ParamsFuturesBasis) (futuresBasis []FuturesBasis, 
 }
 
 type FuturesBaseAsset struct {
-	BaseAsset          string  `json:"baseAsset"`
-	QuoteAsset         string  `json:"quoteAsset"`
-	WeightInQuantity   float64 `json:"weightInQuantity,string"`
-	WeightInPercentage float64 `json:"weightInPercentage,string"`
+	BaseAsset          string  `json:"baseAsset" bson:"baseAsset"`
+	QuoteAsset         string  `json:"quoteAsset" bson:"quoteAsset"`
+	WeightInQuantity   float64 `json:"weightInQuantity,string" bson:"weightInQuantity,string"`
+	WeightInPercentage float64 `json:"weightInPercentage,string" bson:"weightInPercentage,string"`
 }
 
 type CompositeIndexSymbolInfo struct {
-	Symbol        string             `json:"symbol"`
-	Time          int64              `json:"time"`
-	Component     string             `json:"component"`
-	BaseAssetList []FuturesBaseAsset `json:"baseAssetList"`
+	Symbol        string             `json:"symbol" bson:"symbol"`
+	Time          int64              `json:"time" bson:"time"`
+	Component     string             `json:"component" bson:"component"`
+	BaseAssetList []FuturesBaseAsset `json:"baseAssetList" bson:"baseAssetList"`
 }
 
 type ParamsCompositeIndexSymbolInfo struct {
-	Symbol string `json:"symbol"`
+	Symbol string `json:"symbol" bson:"symbol"`
 }
 
 func GetUMCompositeIndexSymbolInfo(params ParamsCompositeIndexSymbolInfo) (compositeIndexSymbolInfo CompositeIndexSymbolInfo, err error) {
@@ -604,21 +613,21 @@ func GetUMCompositeIndexSymbolInfoList() (compositeIndexSymbolInfo []CompositeIn
 }
 
 type MultiAssetsModeAssetIndex struct {
-	Symbol                string `json:"symbol"`
-	Time                  int64  `json:"time"`
-	Index                 string `json:"index"`
-	BidBuffer             string `json:"bidBuffer"`
-	AskBuffer             string `json:"askBuffer"`
-	BidRate               string `json:"bidRate"`
-	AskRate               string `json:"askRate"`
-	AutoExchangeBidBuffer string `json:"autoExchangeBidBuffer"`
-	AutoExchangeAskBuffer string `json:"autoExchangeAskBuffer"`
-	AutoExchangeBidRate   string `json:"autoExchangeBidRate"`
-	AutoExchangeAskRate   string `json:"autoExchangeAskRate"`
+	Symbol                string `json:"symbol" bson:"symbol"`
+	Time                  int64  `json:"time" bson:"time"`
+	Index                 string `json:"index" bson:"index"`
+	BidBuffer             string `json:"bidBuffer" bson:"bidBuffer"`
+	AskBuffer             string `json:"askBuffer" bson:"askBuffer"`
+	BidRate               string `json:"bidRate" bson:"bidRate"`
+	AskRate               string `json:"askRate" bson:"askRate"`
+	AutoExchangeBidBuffer string `json:"autoExchangeBidBuffer" bson:"autoExchangeBidBuffer"`
+	AutoExchangeAskBuffer string `json:"autoExchangeAskBuffer" bson:"autoExchangeAskBuffer"`
+	AutoExchangeBidRate   string `json:"autoExchangeBidRate" bson:"autoExchangeBidRate"`
+	AutoExchangeAskRate   string `json:"autoExchangeAskRate" bson:"autoExchangeAskRate"`
 }
 
 type ParamsMultiAssetsModeAssetIndex struct {
-	Symbol string `json:"symbol"`
+	Symbol string `json:"symbol" bson:"symbol"`
 }
 
 func GetUMMultiAssetsModeAssetIndex(params ParamsMultiAssetsModeAssetIndex) (multiAssetsModeAssetIndex MultiAssetsModeAssetIndex, err error) {
@@ -644,21 +653,21 @@ func GetUMMultiAssetsModeAssetIndexList() (multiAssetsModeAssetIndex []MultiAsse
 }
 
 type IndexPriceConstituentInfo struct {
-	Exchange string `json:"exchange"`
-	Symbol   string `json:"symbol"`
+	Exchange string `json:"exchange" bson:"exchange"`
+	Symbol   string `json:"symbol" bson:"symbol"`
 	// UM Futures
-	Price  float64 `json:"price,string"`
-	Weight float64 `json:"weight,string"`
+	Price  float64 `json:"price,string" bson:"price,string"`
+	Weight float64 `json:"weight,string" bson:"weight,string"`
 }
 
 type IndexPriceConstituents struct {
-	Symbol       string                      `json:"symbol"`
-	Time         int64                       `json:"time"`
-	Constituents []IndexPriceConstituentInfo `json:"constituents"`
+	Symbol       string                      `json:"symbol" bson:"symbol"`
+	Time         int64                       `json:"time" bson:"time"`
+	Constituents []IndexPriceConstituentInfo `json:"constituents" bson:"constituents"`
 }
 
 type ParamsIndexPriceConstituentInfo struct {
-	Symbol string `json:"symbol"`
+	Symbol string `json:"symbol" bson:"symbol"`
 }
 
 func GetUMIndexPriceConstituentInfo(params ParamsIndexPriceConstituentInfo) (indexPriceConstituentInfo IndexPriceConstituents, err error) {
@@ -675,18 +684,18 @@ func GetUMIndexPriceConstituentInfo(params ParamsIndexPriceConstituentInfo) (ind
 }
 
 type InsuranceFundAsset struct {
-	Asset         string  `json:"asset"`
-	MarginBalance float64 `json:"marginBalance,string"`
-	UpdateTime    int64   `json:"updateTime"`
+	Asset         string  `json:"asset" bson:"asset"`
+	MarginBalance float64 `json:"marginBalance,string" bson:"marginBalance,string"`
+	UpdateTime    int64   `json:"updateTime" bson:"updateTime"`
 }
 
 type InsuranceFundBalanceSnapshot struct {
-	Symbols []string             `json:"symbols"`
-	Assets  []InsuranceFundAsset `json:"assets"`
+	Symbols []string             `json:"symbols" bson:"symbols"`
+	Assets  []InsuranceFundAsset `json:"assets" bson:"assets"`
 }
 
 type ParamsInsuranceFundBalanceSnapshot struct {
-	Symbol string `json:"symbol"`
+	Symbol string `json:"symbol" bson:"symbol"`
 }
 
 func GetUMInsuranceFundBalanceSnapshot(params ParamsInsuranceFundBalanceSnapshot) (insuranceFundBalanceSnapshot InsuranceFundBalanceSnapshot, err error) {

@@ -13,7 +13,7 @@ func TestGetSpotRawOrderBook(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetSpotOrderBook() error = %v", err)
 	}
-	fmt.Println(len(orderBook.Bids))
+	fmt.Println(orderBook.Symbol, len(orderBook.Bids))
 }
 
 func TestGetSpotOrderBook(t *testing.T) {
@@ -24,7 +24,7 @@ func TestGetSpotOrderBook(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetSpotOrderBook() error = %v", err)
 	}
-	fmt.Println(orderBook.Bids[0])
+	fmt.Println(orderBook.Symbol, orderBook.Bids[0])
 }
 
 func TestGetSpotTrades(t *testing.T) {

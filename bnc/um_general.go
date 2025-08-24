@@ -16,31 +16,31 @@ func GetUMServerTime() (serverTime ServerTime, err error) {
 }
 
 type FuturesExchangeSymbol struct {
-	Symbol             string           `json:"symbol"` // e.g. SPOT/PERPETUAL:"BTCUSDT", Deliviry:"BTCUSDT_200925" CM:"BTCUSD_PERP"
-	Pair               string           `json:"pair"`   // underlying symbol e.g. "BTCUSDT" "BTCUSD"
-	ContractType       ContractType     `json:"contractType"`
-	DeliveryDate       int64            `json:"deliveryDate"`
-	OnboardDate        int64            `json:"onboardDate"`
-	Status             SymbolStatus     `json:"status"`
-	ContractStatus     ContractStatus   `json:"contractStatus"`
-	ContractSize       float64          `json:"contractSize"`
-	BaseAsset          string           `json:"baseAsset"`
-	QuoteAsset         string           `json:"quoteAsset"`
-	MarginAsset        string           `json:"marginAsset"`
-	PricePrecision     int64            `json:"pricePrecision"`
-	QuantityPrecision  int64            `json:"quantityPrecision"`
-	BaseAssetPrecision int64            `json:"baseAssetPrecision"`
-	QuotePrecision     int64            `json:"quotePrecision"`
-	UnderlyingType     string           `json:"underlyingType"`
-	UnderlyingSubType  []string         `json:"underlyingSubType"`
-	SettlePlan         int64            `json:"settlePlan"`
-	TriggerProtect     string           `json:"triggerProtect"`
-	Filters            []map[string]any `json:"filters"`
-	OrderTypes         []OrderType      `json:"orderTypes"`
-	TimeInForce        []TimeInForce    `json:"timeInForce"`
-	LiquidationFee     float64          `json:"liquidationFee,string"`
-	MarketTakeBound    float64          `json:"marketTakeBound,string"`
-	PermissionSets     []any            `json:"permissionSets"`
+	Symbol             string           `json:"symbol" bson:"symbol"` // e.g. SPOT/PERPETUAL:"BTCUSDT", Deliviry:"BTCUSDT_200925" CM:"BTCUSD_PERP"
+	Pair               string           `json:"pair" bson:"pair"`   // underlying symbol e.g. "BTCUSDT" "BTCUSD"
+	ContractType       ContractType     `json:"contractType" bson:"contractType"`
+	DeliveryDate       int64            `json:"deliveryDate" bson:"deliveryDate"`
+	OnboardDate        int64            `json:"onboardDate" bson:"onboardDate"`
+	Status             SymbolStatus     `json:"status" bson:"status"`
+	ContractStatus     ContractStatus   `json:"contractStatus" bson:"contractStatus"`
+	ContractSize       float64          `json:"contractSize" bson:"contractSize"`
+	BaseAsset          string           `json:"baseAsset" bson:"baseAsset"`
+	QuoteAsset         string           `json:"quoteAsset" bson:"quoteAsset"`
+	MarginAsset        string           `json:"marginAsset" bson:"marginAsset"`
+	PricePrecision     int64            `json:"pricePrecision" bson:"pricePrecision"`
+	QuantityPrecision  int64            `json:"quantityPrecision" bson:"quantityPrecision"`
+	BaseAssetPrecision int64            `json:"baseAssetPrecision" bson:"baseAssetPrecision"`
+	QuotePrecision     int64            `json:"quotePrecision" bson:"quotePrecision"`
+	UnderlyingType     string           `json:"underlyingType" bson:"underlyingType"`
+	UnderlyingSubType  []string         `json:"underlyingSubType" bson:"underlyingSubType"`
+	SettlePlan         int64            `json:"settlePlan" bson:"settlePlan"`
+	TriggerProtect     string           `json:"triggerProtect" bson:"triggerProtect"`
+	Filters            []map[string]any `json:"filters" bson:"filters"`
+	OrderTypes         []OrderType      `json:"orderTypes" bson:"orderTypes"`
+	TimeInForce        []TimeInForce    `json:"timeInForce" bson:"timeInForce"`
+	LiquidationFee     float64          `json:"liquidationFee,string" bson:"liquidationFee,string"`
+	MarketTakeBound    float64          `json:"marketTakeBound,string" bson:"marketTakeBound,string"`
+	PermissionSets     []any            `json:"permissionSets" bson:"permissionSets"`
 }
 
 func (info FuturesExchangeSymbol) ToSymbol() (cex.Symbol, error) {
@@ -70,18 +70,18 @@ func (info FuturesExchangeSymbol) ToSymbol() (cex.Symbol, error) {
 }
 
 type FuturesMarginAsset struct {
-	Asset             string  `json:"asset"`                    // The asset code (e.g. "BTC")
-	MarginAvailable   bool    `json:"marginAvailable"`          // Whether the asset can be used as margin in Multi-Assets mode
-	AutoAssetExchange float64 `json:"autoAssetExchange,string"` // Auto-exchange threshold in Multi-Assets margin mode
+	Asset             string  `json:"asset" bson:"asset"`                    // The asset code (e.g. "BTC")
+	MarginAvailable   bool    `json:"marginAvailable" bson:"marginAvailable"`          // Whether the asset can be used as margin in Multi-Assets mode
+	AutoAssetExchange float64 `json:"autoAssetExchange,string" bson:"autoAssetExchange,string"` // Auto-exchange threshold in Multi-Assets margin mode
 }
 
 type FuturesExchangeInfo struct {
-	Timezone        string                  `json:"timezone"`
-	ServerTime      int64                   `json:"serverTime"`
-	RateLimits      []RateLimier            `json:"rateLimits"`
-	ExchangeFilters []any                   `json:"exchangeFilters"`
-	Assets          []FuturesMarginAsset    `json:"assets"`
-	Symbols         []FuturesExchangeSymbol `json:"symbols"`
+	Timezone        string                  `json:"timezone" bson:"timezone"`
+	ServerTime      int64                   `json:"serverTime" bson:"serverTime"`
+	RateLimits      []RateLimier            `json:"rateLimits" bson:"rateLimits"`
+	ExchangeFilters []any                   `json:"exchangeFilters" bson:"exchangeFilters"`
+	Assets          []FuturesMarginAsset    `json:"assets" bson:"assets"`
+	Symbols         []FuturesExchangeSymbol `json:"symbols" bson:"symbols"`
 }
 
 func GetUMExchangeInfo() (exchangeInfo FuturesExchangeInfo, err error) {

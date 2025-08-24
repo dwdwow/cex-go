@@ -82,20 +82,20 @@ func GetCMHistoricalTrades(params ParamsHistoricalTrades) (trades []Trade, err e
 }
 
 type CMPremiumIndexInfo struct {
-	Symbol          string  `json:"symbol"`                      // Symbol name, e.g. "BTCUSD_PERP"
-	Pair            string  `json:"pair"`                        // Trading pair, e.g. "BTCUSD"
-	MarkPrice       float64 `json:"markPrice,string"`            // Mark price
-	IndexPrice      float64 `json:"indexPrice,string"`           // Index price
-	EstSettlePrice  float64 `json:"estimatedSettlePrice,string"` // Estimated Settle Price, only useful in the last hour before settlement
-	LastFundingRate float64 `json:"lastFundingRate,string"`      // Latest funding rate (perpetual contracts only, empty for delivery)
-	InterestRate    float64 `json:"interestRate,string"`         // Base asset interest rate (perpetual contracts only, empty for delivery)
-	NextFundingTime int64   `json:"nextFundingTime"`             // Next funding time in ms (perpetual contracts only, 0 for delivery)
-	Time            int64   `json:"time"`                        // Current timestamp in ms
+	Symbol          string  `json:"symbol" bson:"symbol"`                                           // Symbol name, e.g. "BTCUSD_PERP"
+	Pair            string  `json:"pair" bson:"pair"`                                               // Trading pair, e.g. "BTCUSD"
+	MarkPrice       float64 `json:"markPrice,string" bson:"markPrice,string"`                       // Mark price
+	IndexPrice      float64 `json:"indexPrice,string" bson:"indexPrice,string"`                     // Index price
+	EstSettlePrice  float64 `json:"estimatedSettlePrice,string" bson:"estimatedSettlePrice,string"` // Estimated Settle Price, only useful in the last hour before settlement
+	LastFundingRate float64 `json:"lastFundingRate,string" bson:"lastFundingRate,string"`           // Latest funding rate (perpetual contracts only, empty for delivery)
+	InterestRate    float64 `json:"interestRate,string" bson:"interestRate,string"`                 // Base asset interest rate (perpetual contracts only, empty for delivery)
+	NextFundingTime int64   `json:"nextFundingTime" bson:"nextFundingTime"`                         // Next funding time in ms (perpetual contracts only, 0 for delivery)
+	Time            int64   `json:"time" bson:"time"`                                               // Current timestamp in ms
 }
 
 type ParamsPremiumIndexInfo struct {
-	Symbol string `json:"symbol"`
-	Pair   string `json:"pair"`
+	Symbol string `json:"symbol" bson:"symbol"`
+	Pair   string `json:"pair" bson:"pair"`
 }
 
 func GetCMPremiumIndexInfo(params ParamsPremiumIndexInfo) (premiumIndexInfo []CMPremiumIndexInfo, err error) {
@@ -317,20 +317,20 @@ func GetCMOpenInterest(params ParamsOpenInterest) (openInterest OpenInterest, er
 }
 
 type CMOpenInterestStats struct {
-	Pair               string       `json:"pair"`
-	ContractType       ContractType `json:"contractType"`
-	SumOpenInterest    float64      `json:"sumOpenInterest,string"`
-	SumOpenInterestVal float64      `json:"sumOpenInterestValue,string"`
-	Timestamp          int64        `json:"timestamp"`
+	Pair               string       `json:"pair" bson:"pair"`
+	ContractType       ContractType `json:"contractType" bson:"contractType"`
+	SumOpenInterest    float64      `json:"sumOpenInterest,string" bson:"sumOpenInterest,string"`
+	SumOpenInterestVal float64      `json:"sumOpenInterestValue,string" bson:"sumOpenInterestValue,string"`
+	Timestamp          int64        `json:"timestamp" bson:"timestamp"`
 }
 
 type ParamsCMOpenInterestStats struct {
-	Pair         string       `json:"pair"`
-	ContractType ContractType `json:"contractType"`
-	Period       string       `json:"period"` // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
-	Limit        int64        `json:"limit,omitempty"`
-	EndTime      int64        `json:"endTime,omitempty"`
-	StartTime    int64        `json:"startTime,omitempty"`
+	Pair         string       `json:"pair" bson:"pair"`
+	ContractType ContractType `json:"contractType" bson:"contractType"`
+	Period       string       `json:"period" bson:"period"` // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
+	Limit        int64        `json:"limit,omitempty" bson:"limit,omitempty"`
+	EndTime      int64        `json:"endTime,omitempty" bson:"endTime,omitempty"`
+	StartTime    int64        `json:"startTime,omitempty" bson:"startTime,omitempty"`
 }
 
 func GetCMOpenInterestStats(params ParamsCMOpenInterestStats) (openInterestStats []CMOpenInterestStats, err error) {
@@ -344,19 +344,19 @@ func GetCMOpenInterestStats(params ParamsCMOpenInterestStats) (openInterestStats
 }
 
 type CMLongShortRatio struct {
-	Pair           string  `json:"pair"`                  // e.g. "BTCUSD"
-	LongShortRatio float64 `json:"longShortRatio,string"` // e.g. 0.7869
-	LongPosition   float64 `json:"longPosition,string"`   // Long account ratio e.g. 0.6442 (64.42%)
-	ShortPosition  float64 `json:"shortPosition,string"`  // Short account ratio e.g. 0.4404 (44.04%)
-	Timestamp      int64   `json:"timestamp"`             // Unix timestamp in milliseconds
+	Pair           string  `json:"pair" bson:"pair"`                                   // e.g. "BTCUSD"
+	LongShortRatio float64 `json:"longShortRatio,string" bson:"longShortRatio,string"` // e.g. 0.7869
+	LongPosition   float64 `json:"longPosition,string" bson:"longPosition,string"`     // Long account ratio e.g. 0.6442 (64.42%)
+	ShortPosition  float64 `json:"shortPosition,string" bson:"shortPosition,string"`   // Short account ratio e.g. 0.4404 (44.04%)
+	Timestamp      int64   `json:"timestamp" bson:"timestamp"`                         // Unix timestamp in milliseconds
 }
 
 type ParamsCMLongShortRatio struct {
-	Pair      string `json:"pair"`
-	Period    string `json:"period"` // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
-	Limit     int64  `json:"limit,omitempty"`
-	EndTime   int64  `json:"endTime,omitempty"`
-	StartTime int64  `json:"startTime,omitempty"`
+	Pair      string `json:"pair" bson:"pair"`
+	Period    string `json:"period" bson:"period"` // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
+	Limit     int64  `json:"limit,omitempty" bson:"limit,omitempty"`
+	EndTime   int64  `json:"endTime,omitempty" bson:"endTime,omitempty"`
+	StartTime int64  `json:"startTime,omitempty" bson:"startTime,omitempty"`
 }
 
 func GetCMTopTraderLongShortPositionRatio(params ParamsCMLongShortRatio) (longShortRatio []CMLongShortRatio, err error) {
@@ -390,22 +390,22 @@ func GetCMGlobalLongShortAccountRatio(params ParamsCMLongShortRatio) (longShortR
 }
 
 type CMTakerBuySellVolume struct {
-	Pair              string       `json:"pair"`
-	ContractType      ContractType `json:"contractType"`
-	TakerBuyVol       int64        `json:"takerBuyVol,string"`
-	TakerSellVol      int64        `json:"takerSellVol,string"`
-	TakerBuyVolValue  float64      `json:"takerBuyVolValue,string"`
-	TakerSellVolValue float64      `json:"takerSellVolValue,string"`
-	Timestamp         int64        `json:"timestamp"`
+	Pair              string       `json:"pair" bson:"pair"`
+	ContractType      ContractType `json:"contractType" bson:"contractType"`
+	TakerBuyVol       int64        `json:"takerBuyVol,string" bson:"takerBuyVol,string"`
+	TakerSellVol      int64        `json:"takerSellVol,string" bson:"takerSellVol,string"`
+	TakerBuyVolValue  float64      `json:"takerBuyVolValue,string" bson:"takerBuyVolValue,string"`
+	TakerSellVolValue float64      `json:"takerSellVolValue,string" bson:"takerSellVolValue,string"`
+	Timestamp         int64        `json:"timestamp" bson:"timestamp"`
 }
 
 type ParamsCMBuySellVolume struct {
-	Pair         string       `json:"pair"`            // e.g. BTCUSD
-	ContractType ContractType `json:"contractType"`    // ALL, CURRENT_QUARTER, NEXT_QUARTER, PERPETUAL
-	Period       string       `json:"period"`          // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
-	Limit        int64        `json:"limit,omitempty"` // Default 30, Max 500
-	EndTime      int64        `json:"endTime,omitempty"`
-	StartTime    int64        `json:"startTime,omitempty"`
+	Pair         string       `json:"pair" bson:"pair"`                       // e.g. BTCUSD
+	ContractType ContractType `json:"contractType" bson:"contractType"`       // ALL, CURRENT_QUARTER, NEXT_QUARTER, PERPETUAL
+	Period       string       `json:"period" bson:"period"`                   // "5m","15m","30m","1h","2h","4h","6h","12h","1d"
+	Limit        int64        `json:"limit,omitempty" bson:"limit,omitempty"` // Default 30, Max 500
+	EndTime      int64        `json:"endTime,omitempty" bson:"endTime,omitempty"`
+	StartTime    int64        `json:"startTime,omitempty" bson:"startTime,omitempty"`
 }
 
 func GetCMTakerBuySellVolume(params ParamsCMBuySellVolume) (longShortRatio []CMTakerBuySellVolume, err error) {
@@ -419,14 +419,14 @@ func GetCMTakerBuySellVolume(params ParamsCMBuySellVolume) (longShortRatio []CMT
 }
 
 type CMBasisInfo struct {
-	Pair                string       `json:"pair"`
-	ContractType        ContractType `json:"contractType"`
-	FuturesPrice        float64      `json:"futuresPrice,string"`
-	IndexPrice          float64      `json:"indexPrice,string"`
-	Basis               float64      `json:"basis,string"`
-	BasisRate           float64      `json:"basisRate,string"`
-	AnnualizedBasisRate string       `json:"annualizedBasisRate"`
-	Timestamp           int64        `json:"timestamp"`
+	Pair                string       `json:"pair" bson:"pair"`
+	ContractType        ContractType `json:"contractType" bson:"contractType"`
+	FuturesPrice        float64      `json:"futuresPrice,string" bson:"futuresPrice,string"`
+	IndexPrice          float64      `json:"indexPrice,string" bson:"indexPrice,string"`
+	Basis               float64      `json:"basis,string" bson:"basis,string"`
+	BasisRate           float64      `json:"basisRate,string" bson:"basisRate,string"`
+	AnnualizedBasisRate string       `json:"annualizedBasisRate" bson:"annualizedBasisRate"`
+	Timestamp           int64        `json:"timestamp" bson:"timestamp"`
 }
 
 type ParamsCMBasisInfo ParamsCMBuySellVolume

@@ -13,7 +13,7 @@ func TestGetUMRawOrderBook(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetUMRawOrderBook() error = %v", err)
 	}
-	fmt.Println(len(orderBook.Bids))
+	fmt.Println(orderBook.Symbol, len(orderBook.Bids))
 }
 
 func TestGetUMOrderBook(t *testing.T) {
@@ -24,7 +24,7 @@ func TestGetUMOrderBook(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetUMOrderBook() error = %v", err)
 	}
-	fmt.Println(orderBook.Bids[0])
+	fmt.Println(orderBook.Symbol, orderBook.Bids[0])
 }
 
 func TestGetUMTrades(t *testing.T) {

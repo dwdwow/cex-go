@@ -9,37 +9,37 @@ import (
 
 type RawOrderBook struct {
 	// Common
-	LastUpdateID int64      `json:"lastUpdateId"`
-	Bids         [][]string `json:"bids"`
-	Asks         [][]string `json:"asks"`
+	LastUpdateID int64      `json:"lastUpdateId" bson:"lastUpdateId"`
+	Bids         [][]string `json:"bids" bson:"bids"`
+	Asks         [][]string `json:"asks" bson:"asks"`
 
 	// Futures
-	EventTime       int64 `json:"E,omitempty"`
-	TransactionTime int64 `json:"T,omitempty"`
+	EventTime       int64 `json:"E,omitempty" bson:"E,omitempty"`
+	TransactionTime int64 `json:"T,omitempty" bson:"T,omitempty"`
 
 	// CM Futures
-	Symbol string `json:"symbol,omitempty"`
-	Pair   string `json:"pair,omitempty"`
+	Symbol string `json:"symbol,omitempty" bson:"symbol,omitempty"`
+	Pair   string `json:"pair,omitempty" bson:"pair,omitempty"`
 }
 
 type OrderBook struct {
 	// Common
-	LastUpdateID int64   `json:"lastUpdateId"`
-	Bids         ob.Book `json:"bids"`
-	Asks         ob.Book `json:"asks"`
+	LastUpdateID int64   `json:"lastUpdateId" bson:"lastUpdateId"`
+	Bids         ob.Book `json:"bids" bson:"bids"`
+	Asks         ob.Book `json:"asks" bson:"asks"`
 
 	// UM && CM Futures
-	EventTime       int64 `json:"E,omitempty"`
-	TransactionTime int64 `json:"T,omitempty"`
+	EventTime       int64 `json:"E,omitempty" bson:"E,omitempty"`
+	TransactionTime int64 `json:"T,omitempty" bson:"T,omitempty"`
 
 	// CM Futures
-	Symbol string `json:"symbol,omitempty"`
-	Pair   string `json:"pair,omitempty"`
+	Symbol string `json:"symbol,omitempty" bson:"symbol,omitempty"`
+	Pair   string `json:"pair,omitempty" bson:"pair,omitempty"`
 }
 
 type ParamsOrderBook struct {
-	Symbol string `json:"symbol"`
-	Limit  int64  `json:"limit,omitempty"` // for spot, default 100, range [100, 5000]; for futures, default 500, range 5, 10, 20, 50, [100, 1000]
+	Symbol string `json:"symbol" bson:"symbol"`
+	Limit  int64  `json:"limit,omitempty" bson:"limit,omitempty"` // for spot, default 100, range [100, 5000]; for futures, default 500, range 5, 10, 20, 50, [100, 1000]
 }
 
 func GetSpotRawOrderBook(params ParamsOrderBook) (orderBook RawOrderBook, err error) {
@@ -49,7 +49,11 @@ func GetSpotRawOrderBook(params ParamsOrderBook) (orderBook RawOrderBook, err er
 		Params:  params,
 	}
 	resp, err := Request[ParamsOrderBook, RawOrderBook](req)
-	return resp.Data, err
+	data := resp.Data
+	// fill symbol and pair
+	data.Symbol = params.Symbol
+	data.Pair = params.Symbol
+	return data, err
 }
 
 func GetSpotOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
@@ -78,23 +82,25 @@ func GetSpotOrderBook(params ParamsOrderBook) (orderBook OrderBook, err error) {
 			}
 		}
 	}
+	orderBook.Symbol = params.Symbol
+	orderBook.Pair = params.Symbol
 	return
 }
 
 type Trade struct {
-	ID           int64  `json:"id"`
-	Price        string `json:"price"`
-	Qty          string `json:"qty"`
-	QuoteQty     string `json:"quoteQty"`
-	Time         int64  `json:"time"`
-	IsBuyerMaker bool   `json:"isBuyerMaker"`
+	ID           int64  `json:"id" bson:"id"`
+	Price        string `json:"price" bson:"price"`
+	Qty          string `json:"qty" bson:"qty"`
+	QuoteQty     string `json:"quoteQty" bson:"quoteQty"`
+	Time         int64  `json:"time" bson:"time"`
+	IsBuyerMaker bool   `json:"isBuyerMaker" bson:"isBuyerMaker"`
 	// Spot
-	IsBestMatch bool `json:"isBestMatch"`
+	IsBestMatch bool `json:"isBestMatch" bson:"isBestMatch"`
 }
 
 type ParamsTrades struct {
-	Symbol string `json:"symbol"`
-	Limit  int64  `json:"limit,omitempty"` // default 500, range [500, 1000]
+	Symbol string `json:"symbol" bson:"symbol"`
+	Limit  int64  `json:"limit,omitempty" bson:"limit,omitempty"` // default 500, range [500, 1000]
 }
 
 func GetSpotTrades(params ParamsTrades) (trades []Trade, err error) {
@@ -108,9 +114,9 @@ func GetSpotTrades(params ParamsTrades) (trades []Trade, err error) {
 }
 
 type ParamsHistoricalTrades struct {
-	Symbol string `json:"symbol"`
-	Limit  int64  `json:"limit,omitempty"` // for spot, default 500, range [500, 1000]; for futures, default 100, range [100, 500]
-	FromID int64  `json:"fromId,omitempty"`
+	Symbol string `json:"symbol" bson:"symbol"`
+	Limit  int64  `json:"limit,omitempty" bson:"limit,omitempty"` // for spot, default 500, range [500, 1000]; for futures, default 100, range [100, 500]
+	FromID int64  `json:"fromId,omitempty" bson:"fromId,omitempty"`
 }
 
 func GetSpotHistoricalTrades(params ParamsHistoricalTrades) (trades []Trade, err error) {
@@ -124,22 +130,22 @@ func GetSpotHistoricalTrades(params ParamsHistoricalTrades) (trades []Trade, err
 }
 
 type AggTrade struct {
-	ID           int64  `json:"a"`
-	Price        string `json:"p"`
-	Qty          string `json:"q"`
-	FirstTradeID int64  `json:"f"`
-	LastTradeID  int64  `json:"l"`
-	Time         int64  `json:"T"`
-	IsBuyerMaker bool   `json:"m"`
-	IsBestMatch  bool   `json:"M"`
+	ID           int64  `json:"a" bson:"a"`
+	Price        string `json:"p" bson:"p"`
+	Qty          string `json:"q" bson:"q"`
+	FirstTradeID int64  `json:"f" bson:"f"`
+	LastTradeID  int64  `json:"l" bson:"l"`
+	Time         int64  `json:"T" bson:"T"`
+	IsBuyerMaker bool   `json:"m" bson:"m"`
+	IsBestMatch  bool   `json:"M" bson:"M"`
 }
 
 type ParamsAggTrades struct {
-	Symbol    string `json:"symbol"`              // Trading symbol, e.g. BTCUSDT
-	FromID    int64  `json:"fromId,omitempty"`    // ID, aggTradeId, to get aggregate trades from INCLUSIVE
-	StartTime int64  `json:"startTime,omitempty"` // Timestamp in ms to get aggregate trades from INCLUSIVE
-	EndTime   int64  `json:"endTime,omitempty"`   // Timestamp in ms to get aggregate trades until INCLUSIVE
-	Limit     int64  `json:"limit,omitempty"`     // Default: 500, Maximum: 1000
+	Symbol    string `json:"symbol" bson:"symbol"`                           // Trading symbol, e.g. BTCUSDT
+	FromID    int64  `json:"fromId,omitempty" bson:"fromId,omitempty"`       // ID, aggTradeId, to get aggregate trades from INCLUSIVE
+	StartTime int64  `json:"startTime,omitempty" bson:"startTime,omitempty"` // Timestamp in ms to get aggregate trades from INCLUSIVE
+	EndTime   int64  `json:"endTime,omitempty" bson:"endTime,omitempty"`     // Timestamp in ms to get aggregate trades until INCLUSIVE
+	Limit     int64  `json:"limit,omitempty" bson:"limit,omitempty"`         // Default: 500, Maximum: 1000
 }
 
 func GetSpotAggTrades(params ParamsAggTrades) (trades []AggTrade, err error) {
@@ -296,13 +302,13 @@ func GetSpotKlines(params ParamsKlines) (klines []Kline, err error) {
 }
 
 type AvgPrice struct {
-	Mins      int64   `json:"mins"`
-	Price     float64 `json:"price,string"`
-	CloseTime int64   `json:"closeTime"`
+	Mins      int64   `json:"mins" bson:"mins"`
+	Price     float64 `json:"price,string" bson:"price,string"`
+	CloseTime int64   `json:"closeTime" bson:"closeTime"`
 }
 
 type ParamsAvgPrice struct {
-	Symbol string `json:"symbol"`
+	Symbol string `json:"symbol" bson:"symbol"`
 }
 
 func GetSpotAvgPrice(params ParamsAvgPrice) (avgPrice AvgPrice, err error) {
@@ -317,35 +323,35 @@ func GetSpotAvgPrice(params ParamsAvgPrice) (avgPrice AvgPrice, err error) {
 
 type Ticker24HrStats struct {
 	// MINI FULL
-	Symbol      string  `json:"symbol"`
-	LastPrice   float64 `json:"lastPrice,string"`
-	OpenPrice   float64 `json:"openPrice,string"`
-	HighPrice   float64 `json:"highPrice,string"`
-	LowPrice    float64 `json:"lowPrice,string"`
-	Volume      float64 `json:"volume,string"`
-	QuoteVolume float64 `json:"quoteVolume,string"`
-	OpenTime    int64   `json:"openTime"`
-	CloseTime   int64   `json:"closeTime"`
-	FirstID     int64   `json:"firstId"`
-	LastID      int64   `json:"lastId"`
-	Count       int64   `json:"count"`
+	Symbol      string  `json:"symbol" bson:"symbol"`
+	LastPrice   float64 `json:"lastPrice,string" bson:"lastPrice,string"`
+	OpenPrice   float64 `json:"openPrice,string" bson:"openPrice,string"`
+	HighPrice   float64 `json:"highPrice,string" bson:"highPrice,string"`
+	LowPrice    float64 `json:"lowPrice,string" bson:"lowPrice,string"`
+	Volume      float64 `json:"volume,string" bson:"volume,string"`
+	QuoteVolume float64 `json:"quoteVolume,string" bson:"quoteVolume,string"`
+	OpenTime    int64   `json:"openTime" bson:"openTime"`
+	CloseTime   int64   `json:"closeTime" bson:"closeTime"`
+	FirstID     int64   `json:"firstId" bson:"firstId"`
+	LastID      int64   `json:"lastId" bson:"lastId"`
+	Count       int64   `json:"count" bson:"count"`
 	// FULL
-	PriceChange        float64 `json:"priceChange,string"`
-	PriceChangePercent float64 `json:"priceChangePercent,string"`
-	WeightedAvgPrice   float64 `json:"weightedAvgPrice,string"`
-	PrevClosePrice     float64 `json:"prevClosePrice,string"`
-	LastQty            float64 `json:"lastQty,string"`
+	PriceChange        float64 `json:"priceChange,string" bson:"priceChange,string"`
+	PriceChangePercent float64 `json:"priceChangePercent,string" bson:"priceChangePercent,string"`
+	WeightedAvgPrice   float64 `json:"weightedAvgPrice,string" bson:"weightedAvgPrice,string"`
+	PrevClosePrice     float64 `json:"prevClosePrice,string" bson:"prevClosePrice,string"`
+	LastQty            float64 `json:"lastQty,string" bson:"lastQty,string"`
 	// FULL, SPOT
-	BidPrice float64 `json:"bidPrice,string"`
-	BidQty   float64 `json:"bidQty,string"`
-	AskPrice float64 `json:"askPrice,string"`
-	AskQty   float64 `json:"askQty,string"`
+	BidPrice float64 `json:"bidPrice,string" bson:"bidPrice,string"`
+	BidQty   float64 `json:"bidQty,string" bson:"bidQty,string"`
+	AskPrice float64 `json:"askPrice,string" bson:"askPrice,string"`
+	AskQty   float64 `json:"askQty,string" bson:"askQty,string"`
 }
 
 type ParamsTicker24HrStats struct {
-	Symbol string `json:"symbol"`
+	Symbol string `json:"symbol" bson:"symbol"`
 	// SPOT
-	Type string `json:"type,omitempty"` // FULL or MINI, default is FULL
+	Type string `json:"type,omitempty" bson:"type,omitempty"` // FULL or MINI, default is FULL
 }
 
 func GetSpotTicker24HrStats(params ParamsTicker24HrStats) (ticker Ticker24HrStats, err error) {
@@ -362,8 +368,8 @@ func GetSpotTicker24HrStats(params ParamsTicker24HrStats) (ticker Ticker24HrStat
 }
 
 type ParamsTicker24HrStatsList struct {
-	Symbols []string `json:"symbols,omitempty"`
-	Type    string   `json:"type,omitempty"` // FULL or MINI, default is FULL
+	Symbols []string `json:"symbols,omitempty" bson:"symbols,omitempty"`
+	Type    string   `json:"type,omitempty" bson:"type,omitempty"` // FULL or MINI, default is FULL
 }
 
 func GetSpotTicker24HrStatsList(params ParamsTicker24HrStatsList) (tickers []Ticker24HrStats, err error) {
@@ -377,27 +383,27 @@ func GetSpotTicker24HrStatsList(params ParamsTicker24HrStatsList) (tickers []Tic
 }
 
 type TickerTradingDayStats struct {
-	Symbol             string  `json:"symbol"`
-	PriceChange        float64 `json:"priceChange,string"`
-	PriceChangePercent float64 `json:"priceChangePercent,string"`
-	WeightedAvgPrice   float64 `json:"weightedAvgPrice,string"`
-	OpenPrice          float64 `json:"openPrice,string"`
-	HighPrice          float64 `json:"highPrice,string"`
-	LowPrice           float64 `json:"lowPrice,string"`
-	LastPrice          float64 `json:"lastPrice,string"`
-	Volume             float64 `json:"volume,string"`
-	QuoteVolume        float64 `json:"quoteVolume,string"`
-	OpenTime           int64   `json:"openTime"`
-	CloseTime          int64   `json:"closeTime"`
-	FirstID            int64   `json:"firstId"`
-	LastID             int64   `json:"lastId"`
-	Count              int64   `json:"count"`
+	Symbol             string  `json:"symbol" bson:"symbol"`
+	PriceChange        float64 `json:"priceChange,string" bson:"priceChange,string"`
+	PriceChangePercent float64 `json:"priceChangePercent,string" bson:"priceChangePercent,string"`
+	WeightedAvgPrice   float64 `json:"weightedAvgPrice,string" bson:"weightedAvgPrice,string"`
+	OpenPrice          float64 `json:"openPrice,string" bson:"openPrice,string"`
+	HighPrice          float64 `json:"highPrice,string" bson:"highPrice,string"`
+	LowPrice           float64 `json:"lowPrice,string" bson:"lowPrice,string"`
+	LastPrice          float64 `json:"lastPrice,string" bson:"lastPrice,string"`
+	Volume             float64 `json:"volume,string" bson:"volume,string"`
+	QuoteVolume        float64 `json:"quoteVolume,string" bson:"quoteVolume,string"`
+	OpenTime           int64   `json:"openTime" bson:"openTime"`
+	CloseTime          int64   `json:"closeTime" bson:"closeTime"`
+	FirstID            int64   `json:"firstId" bson:"firstId"`
+	LastID             int64   `json:"lastId" bson:"lastId"`
+	Count              int64   `json:"count" bson:"count"`
 }
 
 type ParamsTickerTradingDayStats struct {
-	Symbol   string `json:"symbol"`
-	TimeZone string `json:"timeZone,omitempty"`
-	Type     string `json:"type,omitempty"` // FULL or MINI, default is FULL
+	Symbol   string `json:"symbol" bson:"symbol"`
+	TimeZone string `json:"timeZone,omitempty" bson:"timeZone,omitempty"`
+	Type     string `json:"type,omitempty" bson:"type,omitempty"` // FULL or MINI, default is FULL
 }
 
 func GetSpotTickerTradingDayStats(params ParamsTickerTradingDayStats) (ticker TickerTradingDayStats, err error) {
@@ -414,9 +420,9 @@ func GetSpotTickerTradingDayStats(params ParamsTickerTradingDayStats) (ticker Ti
 }
 
 type ParamsTickerTradingDayStatsList struct {
-	Symbols  []string `json:"symbols"` // max 100 symbols
-	TimeZone string   `json:"timeZone,omitempty"`
-	Type     string   `json:"type,omitempty"` // FULL or MINI, default is FULL
+	Symbols  []string `json:"symbols" bson:"symbols"` // max 100 symbols
+	TimeZone string   `json:"timeZone,omitempty" bson:"timeZone,omitempty"`
+	Type     string   `json:"type,omitempty" bson:"type,omitempty"` // FULL or MINI, default is FULL
 }
 
 func GetSpotTickerTradingDayStatsList(params ParamsTickerTradingDayStatsList) (tickers []TickerTradingDayStats, err error) {
@@ -430,16 +436,16 @@ func GetSpotTickerTradingDayStatsList(params ParamsTickerTradingDayStatsList) (t
 }
 
 type TickerPrice struct {
-	Symbol string  `json:"symbol"`
-	Price  float64 `json:"price,string"`
+	Symbol string  `json:"symbol" bson:"symbol"`
+	Price  float64 `json:"price,string" bson:"price,string"`
 	// Futures
-	Time int64 `json:"time"`
+	Time int64 `json:"time" bson:"time"`
 	// CM Futures
-	Pair string `json:"pair"`
+	Pair string `json:"pair" bson:"pair"`
 }
 
 type ParamsTickerPrice struct {
-	Symbol string `json:"symbol"`
+	Symbol string `json:"symbol" bson:"symbol"`
 }
 
 func GetSpotTickerPrice(params ParamsTickerPrice) (ticker TickerPrice, err error) {
@@ -456,7 +462,7 @@ func GetSpotTickerPrice(params ParamsTickerPrice) (ticker TickerPrice, err error
 }
 
 type ParamsTickerPriceList struct {
-	Symbols []string `json:"symbols,omitempty"`
+	Symbols []string `json:"symbols,omitempty" bson:"symbols,omitempty"`
 }
 
 func GetSpotTickerPriceList(params ParamsTickerPriceList) (tickers []TickerPrice, err error) {
@@ -470,17 +476,17 @@ func GetSpotTickerPriceList(params ParamsTickerPriceList) (tickers []TickerPrice
 }
 
 type OrderBookTicker struct {
-	Symbol   string  `json:"symbol"`
-	BidPrice float64 `json:"bidPrice,string"`
-	BidQty   float64 `json:"bidQty,string"`
-	AskPrice float64 `json:"askPrice,string"`
-	AskQty   float64 `json:"askQty,string"`
+	Symbol   string  `json:"symbol" bson:"symbol"`
+	BidPrice float64 `json:"bidPrice,string" bson:"bidPrice,string"`
+	BidQty   float64 `json:"bidQty,string" bson:"bidQty,string"`
+	AskPrice float64 `json:"askPrice,string" bson:"askPrice,string"`
+	AskQty   float64 `json:"askQty,string" bson:"askQty,string"`
 	// Futures
-	Time int64 `json:"time"`
+	Time int64 `json:"time" bson:"time"`
 }
 
 type ParamsOrderBookTicker struct {
-	Symbol string `json:"symbol"`
+	Symbol string `json:"symbol" bson:"symbol"`
 }
 
 func GetSpotOrderBookTicker(params ParamsOrderBookTicker) (ticker OrderBookTicker, err error) {
@@ -497,7 +503,7 @@ func GetSpotOrderBookTicker(params ParamsOrderBookTicker) (ticker OrderBookTicke
 }
 
 type ParamsTickerBookTickerList struct {
-	Symbols []string `json:"symbols,omitempty"`
+	Symbols []string `json:"symbols,omitempty" bson:"symbols,omitempty"`
 }
 
 func GetSpotTickerBookTickerList(params ParamsTickerBookTickerList) (tickers []OrderBookTicker, err error) {
@@ -511,27 +517,27 @@ func GetSpotTickerBookTickerList(params ParamsTickerBookTickerList) (tickers []O
 }
 
 type TickerStats struct {
-	Symbol             string  `json:"symbol"`
-	PriceChange        float64 `json:"priceChange,string"`
-	PriceChangePercent float64 `json:"priceChangePercent,string"`
-	WeightedAvgPrice   float64 `json:"weightedAvgPrice,string"`
-	OpenPrice          float64 `json:"openPrice,string"`
-	HighPrice          float64 `json:"highPrice,string"`
-	LowPrice           float64 `json:"lowPrice,string"`
-	LastPrice          float64 `json:"lastPrice,string"`
-	Volume             float64 `json:"volume,string"`
-	QuoteVolume        float64 `json:"quoteVolume,string"`
-	OpenTime           int64   `json:"openTime"`
-	CloseTime          int64   `json:"closeTime"`
-	FirstID            int64   `json:"firstId"`
-	LastID             int64   `json:"lastId"`
-	Count              int64   `json:"count"`
+	Symbol             string  `json:"symbol" bson:"symbol"`
+	PriceChange        float64 `json:"priceChange,string" bson:"priceChange,string"`
+	PriceChangePercent float64 `json:"priceChangePercent,string" bson:"priceChangePercent,string"`
+	WeightedAvgPrice   float64 `json:"weightedAvgPrice,string" bson:"weightedAvgPrice,string"`
+	OpenPrice          float64 `json:"openPrice,string" bson:"openPrice,string"`
+	HighPrice          float64 `json:"highPrice,string" bson:"highPrice,string"`
+	LowPrice           float64 `json:"lowPrice,string" bson:"lowPrice,string"`
+	LastPrice          float64 `json:"lastPrice,string" bson:"lastPrice,string"`
+	Volume             float64 `json:"volume,string" bson:"volume,string"`
+	QuoteVolume        float64 `json:"quoteVolume,string" bson:"quoteVolume,string"`
+	OpenTime           int64   `json:"openTime" bson:"openTime"`
+	CloseTime          int64   `json:"closeTime" bson:"closeTime"`
+	FirstID            int64   `json:"firstId" bson:"firstId"`
+	LastID             int64   `json:"lastId" bson:"lastId"`
+	Count              int64   `json:"count" bson:"count"`
 }
 
 type ParamsTickerStats struct {
-	Symbol     string `json:"symbol"`
-	WindowSize string `json:"windowSize,omitempty"` // 1m-59m, 1h-23h, 1d-7d, default 1d
-	Type       string `json:"type,omitempty"`       // FULL or MINI, default FULL
+	Symbol     string `json:"symbol" bson:"symbol"`
+	WindowSize string `json:"windowSize,omitempty" bson:"windowSize,omitempty"` // 1m-59m, 1h-23h, 1d-7d, default 1d
+	Type       string `json:"type,omitempty" bson:"type,omitempty"`             // FULL or MINI, default FULL
 }
 
 func GetSpotTickerStats(params ParamsTickerStats) (ticker TickerStats, err error) {
@@ -548,9 +554,9 @@ func GetSpotTickerStats(params ParamsTickerStats) (ticker TickerStats, err error
 }
 
 type ParamsTickerStatsList struct {
-	Symbols    []string `json:"symbols"`              // max 100 symbols
-	WindowSize string   `json:"windowSize,omitempty"` // 1m-59m, 1h-23h, 1d-7d, default 1d
-	Type       string   `json:"type,omitempty"`       // FULL or MINI, default FULL
+	Symbols    []string `json:"symbols" bson:"symbols"`                           // max 100 symbols
+	WindowSize string   `json:"windowSize,omitempty" bson:"windowSize,omitempty"` // 1m-59m, 1h-23h, 1d-7d, default 1d
+	Type       string   `json:"type,omitempty" bson:"type,omitempty"`             // FULL or MINI, default FULL
 }
 
 func GetSpotTickerStatsList(params ParamsTickerStatsList) (tickers []TickerStats, err error) {
