@@ -119,6 +119,9 @@ func (c *MongoObClient) Run() (err error) {
 	if err != nil {
 		return
 	}
+	if c.cur == nil {
+		panic("cur is nil")
+	}
 	c._exist.SetKV(c.cfg.Symbol, true)
 	return
 }
