@@ -28,6 +28,6 @@ func TestMongoObClient(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		fmt.Println(obData.Symbol, obData.Asks[0], obData.Bids[0])
+		fmt.Println(time.UnixMilli(obData.Note.TxTime), obData.Symbol, obData.Asks[0], obData.Bids[0])
 	}
 }
