@@ -204,6 +204,32 @@ func (w *RawWs) startNoLock() error {
 
 	w.logger.Info("Started")
 
+	w.status = RAW_WS_STATUS_STARTED
+
+	return nil
+}
+
+func (w *RawWs) restart() error {
+	w.logger.Info("Restarting")
+	w.gmu.Lock()
+	defer w.gmu.Unlock()
+	if w.status == RAW_WS_STATUS_CLOSED {
+		return ErrWsClientClosed
+	}
+
+	if w.ctx.Err() != nil {
+		return w.ctx.Err()
+	}
+
+	w.status = RAW_WS_STATUS_NEW
+	time.Sleep(time.Second)
+
+	err := w.startNoLock()
+	if err != nil {
+		w.logger.Error("Cannot restart", "err", err)
+		return err
+	}
+
 	streams := w.streams
 	w.streams = nil
 	if len(streams) > 0 {
@@ -217,36 +243,14 @@ func (w *RawWs) startNoLock() error {
 		}
 	}
 
-	w.status = RAW_WS_STATUS_STARTED
-
-	return nil
-}
-
-var rawWsRestartAfterErrLimiter = limiter.New(time.Minute, 10)
-
-func (w *RawWs) restartAfterErr() error {
-	if !rawWsRestartAfterErrLimiter.TryWait() {
-		return ErrWsTooFrequentRestart
-	}
-	w.logger.Info("Restarting")
-	w.gmu.Lock()
-	defer w.gmu.Unlock()
-	if w.status == RAW_WS_STATUS_CLOSED {
-		return ErrWsClientClosed
-	}
-	// if w.status != RAW_WS_STATUS_STARTED {
-	// 	return fmt.Errorf("bnc: ws client status is %d, cannot restart", w.status)
-	// }
-	w.status = RAW_WS_STATUS_NEW
-	time.Sleep(time.Second)
-	return w.startNoLock()
+	return err
 }
 
 func (w *RawWs) Wait() (d []byte, err error) {
 	for {
 		t, d, err := w.conn.ReadMessage()
 		if err != nil {
-			e := w.restartAfterErr()
+			e := w.restart()
 			if e != nil {
 				return nil, fmt.Errorf("bnc: ws has err: %w, cannot restart: %w", err, e)
 			}
@@ -258,14 +262,14 @@ func (w *RawWs) Wait() (d []byte, err error) {
 			if w.conn != nil {
 				err := w.conn.WriteMessage(websocket.PongMessage, d)
 				if err != nil {
-					e := w.restartAfterErr()
+					e := w.restart()
 					if e != nil {
 						return nil, fmt.Errorf("bnc: ws has err: %w, cannot restart: %w", err, e)
 					}
 					return nil, err
 				}
 			} else {
-				e := w.restartAfterErr()
+				e := w.restart()
 				if e != nil {
 					return nil, fmt.Errorf("bnc: ws has err: %w, cannot restart: %w", err, e)
 				}
