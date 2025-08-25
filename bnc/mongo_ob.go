@@ -92,7 +92,7 @@ func (c *MongoObClient) Run() (err error) {
 	c.clt = clt
 	c.db = clt.Database(c.cfg.DbName)
 	c.coll = c.db.Collection("depth_" + c.cfg.Symbol + "_" + string(c.cfg.SymbolType))
-	obColl := c.db.Collection("ob_" + string(c.cfg.SymbolType))
+	obColl := c.db.Collection("ob_" + c.cfg.Symbol + "_" + string(c.cfg.SymbolType))
 	res := obColl.FindOne(c.ctx, bson.D{
 		{Key: "symbol", Value: c.cfg.Symbol},
 		{Key: "localTime", Value: bson.D{

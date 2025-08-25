@@ -19,7 +19,7 @@ func CacheSymbolDepthUpdateAndBookTicker(symbolType cex.SymbolType, symbol, mong
 	}
 	db := client.Database(dbName)
 	go func() {
-		coll := db.Collection("ob_" + string(symbolType))
+		coll := db.Collection("ob_" + symbol + "_" + string(symbolType))
 		for {
 			publicRestLimitter.Wait(context.Background())
 			o, err := GetOrderbook(symbolType, ParamsOrderBook{
@@ -101,7 +101,7 @@ func CacheSymbolDepthUpdateAndBookTicker(symbolType cex.SymbolType, symbol, mong
 }
 
 func CacheOneTypeAllSymbolsDepthAndBookTicker(symbolType cex.SymbolType) {
-	mongoUri := "mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000"
+	mongoUri := "mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&maxPoolSize=1000"
 	dbName := "bnc_realtime_cache"
 
 	wsDepth := NewDepthUpdateWs(nil)
@@ -289,7 +289,7 @@ func CacheOneSymbolAggTrades(symbolType cex.SymbolType, symbol, mongoUri, dbName
 }
 
 func CacheAggTrades(symbolType cex.SymbolType, symbols []string) {
-	mongoUri := "mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000"
+	mongoUri := "mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&maxPoolSize=1000"
 	dbName := "bnc_realtime_cache"
 
 	wsAggTrade := NewAggTradeWs(nil)
