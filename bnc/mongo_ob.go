@@ -2,7 +2,6 @@ package bnc
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"os"
 	"strconv"
@@ -132,7 +131,7 @@ func (c *MongoObClient) Run() (err error) {
 
 func (c *MongoObClient) Read() (obData ob.Data[WsDepthStream], err error) {
 	if !c.cur.Next(c.ctx) {
-		err = errors.New("bnc: no more depth update data in mongodb")
+		err = ErrNoMoreDepthUpdateData
 		return
 	}
 	var depthData WsDepthStream
