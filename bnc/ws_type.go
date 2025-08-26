@@ -187,7 +187,7 @@ type WsAggTradeStream struct {
 	FirstTradeId int64   `json:"f" bson:"f"`
 	LastTradeId  int64   `json:"l" bson:"l"`
 	TradeTime    int64   `json:"T" bson:"T"`
-	IsMaker      bool    `json:"m" bson:"m"`
+	IsBuyerMaker bool    `json:"m" bson:"m"`
 	M            bool    `json:"M" bson:"M"` // ignore
 }
 
