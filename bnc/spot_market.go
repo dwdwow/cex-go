@@ -229,6 +229,10 @@ func (rk RawKline) ToKline() (k Kline) {
 
 type Kline [11]float64
 
+func (k Kline) Valid() bool {
+	return k[0] != 0
+}
+
 func (k Kline) OpenTime() int64 {
 	return int64(k[0])
 }
