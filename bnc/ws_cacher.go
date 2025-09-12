@@ -358,13 +358,15 @@ func ClearMongoCachedAggTrades(symbolType cex.SymbolType, symbols []string) {
 		}
 		for _, symbol := range symbols {
 			coll := db.Collection("agg_trades_" + symbol + "_" + string(symbolType))
-			_, err := coll.DeleteMany(context.Background(), bson.D{
+			res, err := coll.DeleteMany(context.Background(), bson.D{
 				{Key: "T", Value: bson.D{
 					{Key: "$lt", Value: ti},
 				}},
 			})
 			if err != nil {
 				slog.Error("bnc: delete mongo cached agg trades failed", "err", err, "symbol", symbol, "symbolType", symbolType)
+			} else {
+				slog.Info("bnc: deleted mongo cached agg trades", "symbol", symbol, "symbolType", symbolType, "deleted", res.DeletedCount)
 			}
 		}
 		time.Sleep(time.Hour * 24)
