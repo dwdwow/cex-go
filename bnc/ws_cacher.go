@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dwdwow/cex-go"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -336,5 +337,33 @@ func CacheAggTrades(symbolType cex.SymbolType, symbols []string) {
 			panic(fmt.Errorf("redun agg trade not found"))
 		}
 		CacheOneSymbolAggTrades(symbolType, symbol, mongoUri, dbName, ch, redunCh)
+	}
+}
+
+func ClearMongoCachedAggTrades(symbolType cex.SymbolType, symbols []string) {
+	mongoUri := "mongodb://127.0.0.1:27017/?directConnection=true&serverSelectionTimeoutMS=2000&maxPoolSize=1000"
+	dbName := "bnc_realtime_cache"
+	client, err := mongo.Connect(options.Client().ApplyURI(mongoUri))
+	if err != nil {
+		panic(err)
+	}
+	db := client.Database(dbName)
+	slog.Info("bnc: clearing mongo cached agg trades", "symbolType", symbolType, "symbols", symbols)
+	for {
+		var ti int64
+		if symbolType == cex.SYMBOL_TYPE_SPOT {
+			ti = time.Now().Add(-time.Hour * 72).UnixMicro()
+		} else {
+			ti = time.Now().Add(-time.Hour * 72).UnixMilli()
+		}
+		for _, symbol := range symbols {
+			coll := db.Collection("agg_trades_" + symbol + "_" + string(symbolType))
+			coll.DeleteMany(context.Background(), bson.D{
+				{Key: "T", Value: bson.D{
+					{Key: "$lt", Value: ti},
+				}},
+			})
+		}
+		time.Sleep(time.Hour * 24)
 	}
 }
