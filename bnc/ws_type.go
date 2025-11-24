@@ -110,10 +110,10 @@ type WsBookTickerStream struct {
 	EventTime         int64   `json:"E" bson:"E"`
 	TxTime            int64   `json:"T" bson:"T"`
 	Symbol            string  `json:"s" bson:"s"`
-	BestBidPrice      string  `json:"b" bson:"b"`
-	BestBidQty        string  `json:"B" bson:"B"`
-	BestAskPrice      string  `json:"a" bson:"a"`
-	BestAskQty        string  `json:"A" bson:"A"`
+	BestBidPrice      float64 `json:"b,string" bson:"b,string"`
+	BestBidQty        float64 `json:"B,string" bson:"B,string"`
+	BestAskPrice      float64 `json:"a,string" bson:"a,string"`
+	BestAskQty        float64 `json:"A,string" bson:"A,string"`
 }
 
 type WsFuAggTradeStream struct {
